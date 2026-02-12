@@ -24,13 +24,35 @@ calibres.sort(reverse=True)
 
 peso_g = peso_objetivo * 1000
 
-# ---------------- INICIALIZAR SESSION ----------------
-if "rangos" not in st.session_state:
-    st.session_state.rangos = {}
+# ---------------- GENERAR RANGOS CORRECTOS ----------------
+def generar_rangos():
+    promedios = {c: peso_g / c for c in calibres}
+    cortes = []
+
+    for i in range(len(calibres) - 1):
+        c1 = calibres[i]
+        c2 = calibres[i + 1]
+        corte = (promedios[c1] + promedios[c2]) / 2
+        cortes.append(round(corte))
+
+    rangos = {}
 
     for i, calibre in enumerate(calibres):
-        promedio = peso_g / calibre
-        st.session_state.rangos[calibre] = round(promedio)
+        if i == 0:
+            rangos[calibre] = cortes[i]
+        elif i == len(calibres) - 1:
+            rangos[calibre] = round(promedios[calibre])
+        else:
+            rangos[calibre] = cortes[i]
+
+    return rangos
+
+
+if "rangos" not in st.session_state:
+    st.session_state.rangos = generar_rangos()
+
+if st.button("🔄 Recalcular desde peso objetivo"):
+    st.session_state.rangos = generar_rangos()
 
 # ---------------- BLOQUES ----------------
 
@@ -42,11 +64,9 @@ for i, calibre in enumerate(calibres):
 
     col1, col2, col3 = st.columns([1,2,1])
 
-    # Botón -
     if col1.button("➖", key=f"menos_{calibre}"):
         st.session_state.rangos[calibre] -= 1
 
-    # Número editable
     nuevo_valor = col2.number_input(
         "Desde (g)",
         value=st.session_state.rangos[calibre],
@@ -56,17 +76,15 @@ for i, calibre in enumerate(calibres):
 
     st.session_state.rangos[calibre] = nuevo_valor
 
-    # Botón +
     if col3.button("➕", key=f"mas_{calibre}"):
         st.session_state.rangos[calibre] += 1
 
-    # -------- ESPEJO HACIA ABAJO --------
-    if i < len(calibres) - 1:
-        siguiente = calibres[i + 1]
-        st.session_state.rangos[siguiente] = st.session_state.rangos[calibre]
+    # -------- PESO REAL --------
+    if i == 0:
+        hasta = round(peso_g / calibre)
+    else:
+        hasta = st.session_state.rangos[calibres[i - 1]]
 
-    # -------- CALCULAR PESO REAL --------
-    hasta = st.session_state.rangos[calibre]
     desde = st.session_state.rangos[calibre]
 
     peso_real = ((desde + hasta) / 2) * calibre / 1000
@@ -74,3 +92,9 @@ for i, calibre in enumerate(calibres):
     st.write(f"📊 Peso real: **{peso_real:.2f} kg**")
 
     st.divider()
+
+# -------- ESPEJO GLOBAL (DESPUÉS DE DIBUJAR) --------
+for i in range(len(calibres) - 1):
+    actual = calibres[i]
+    siguiente = calibres[i + 1]
+    st.session_state.rangos[siguiente] = st.session_state.rangos[actual]
