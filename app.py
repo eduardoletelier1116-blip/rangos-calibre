@@ -93,12 +93,7 @@ for i, calibre in enumerate(calibres):
 
     st.divider()
 
-# -------- ESPEJO GLOBAL (DESPUÉS DE DIBUJAR) --------
-for i in range(len(calibres) - 1):
-    actual = calibres[i]
-    siguiente = calibres[i + 1]
-    st.session_state.rangos[siguiente] = st.session_state.rangos[actual]
-    st.divider()
+st.divider()
 st.header("📊 Tabla Final de Rangos")
 
 tabla = []
