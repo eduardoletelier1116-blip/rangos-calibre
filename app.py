@@ -1,4 +1,3 @@
-
 import pandas as pd
 
 st.set_page_config(page_title="Rangos por Calibre PRO", layout="wide")
@@ -67,5 +66,3 @@ if st.button("🔄 Generar / Recalcular Rangos"):
             "Desde (g)": round(desde),
             "Hasta (g)": round(hasta)
         })
-
-    st.session_state.df = pd.DataFrame(data)
