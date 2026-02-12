@@ -98,3 +98,27 @@ for i in range(len(calibres) - 1):
     actual = calibres[i]
     siguiente = calibres[i + 1]
     st.session_state.rangos[siguiente] = st.session_state.rangos[actual]
+    st.divider()
+st.header("📊 Tabla Final de Rangos")
+
+tabla = []
+
+for i, calibre in enumerate(calibres):
+
+    desde = st.session_state.rangos[calibre]
+
+    if i == 0:
+        hasta = round(peso_g / calibre)
+    else:
+        hasta = st.session_state.rangos[calibres[i - 1]]
+
+    peso_real = ((desde + hasta) / 2) * calibre / 1000
+
+    tabla.append({
+        "Calibre": calibre,
+        "Desde (g)": desde,
+        "Hasta (g)": hasta,
+        "Peso real (kg)": round(peso_real, 2)
+    })
+
+st.dataframe(tabla, use_container_width=True)
