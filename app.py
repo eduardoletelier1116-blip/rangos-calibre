@@ -1,10 +1,10 @@
 import streamlit as st
-import pandas as pd
 
-st.set_page_config(page_title="Rangos PRO", layout="wide")
+st.set_page_config(page_title="Rangos PRO Móvil", layout="wide")
 
-st.title("📦 Calculadora Profesional de Rangos")
+st.title("📦 Rangos de Calibre - Modo Operario")
 
+# ---------------- PESO ----------------
 peso_objetivo = st.number_input(
     "Peso objetivo (kg)",
     value=19.0,
@@ -19,62 +19,58 @@ calibres_input = st.text_input(
     value=",".join(map(str, calibres_default))
 )
 
-if st.button("🔄 Generar Rangos"):
+calibres = [int(c.strip()) for c in calibres_input.split(",") if c.strip()]
+calibres.sort(reverse=True)
 
-    calibres = [int(c.strip()) for c in calibres_input.split(",") if c.strip()]
-    calibres.sort(reverse=True)
+peso_g = peso_objetivo * 1000
 
-    peso_g = peso_objetivo * 1000
-    promedios = {c: peso_g / c for c in calibres}
-
-    cortes = []
-    for i in range(len(calibres) - 1):
-        c1 = calibres[i]
-        c2 = calibres[i + 1]
-        corte = (promedios[c1] + promedios[c2]) / 2
-        cortes.append(corte)
-
-    data = []
+# ---------------- INICIALIZAR SESSION ----------------
+if "rangos" not in st.session_state:
+    st.session_state.rangos = {}
 
     for i, calibre in enumerate(calibres):
-        if i == 0:
-            hasta = round(promedios[calibre])
-            desde = round(cortes[i])
-        elif i == len(calibres) - 1:
-            hasta = round(cortes[i - 1])
-            desde = round(promedios[calibre])
-        else:
-            hasta = round(cortes[i - 1])
-            desde = round(cortes[i])
+        promedio = peso_g / calibre
+        st.session_state.rangos[calibre] = round(promedio)
 
-        data.append({
-            "Calibre": calibre,
-            "Desde (g)": desde,
-            "Hasta (g)": hasta
-        })
+# ---------------- BLOQUES ----------------
 
-    st.session_state.df = pd.DataFrame(data)
+st.divider()
 
-if "df" in st.session_state:
+for i, calibre in enumerate(calibres):
 
-    df_editado = st.data_editor(
-        st.session_state.df,
-        num_rows="dynamic",
-        use_container_width=True,
-        column_config={
-            "Desde (g)": st.column_config.NumberColumn(step=1, format="%d"),
-            "Hasta (g)": st.column_config.NumberColumn(step=1, format="%d")
-        }
+    st.subheader(f"Calibre {calibre}")
+
+    col1, col2, col3 = st.columns([1,2,1])
+
+    # Botón -
+    if col1.button("➖", key=f"menos_{calibre}"):
+        st.session_state.rangos[calibre] -= 1
+
+    # Número editable
+    nuevo_valor = col2.number_input(
+        "Desde (g)",
+        value=st.session_state.rangos[calibre],
+        step=1,
+        key=f"input_{calibre}"
     )
 
-    # ESPEJO: al mover DESDE afecta el HASTA del siguiente
-    for i in range(len(df_editado) - 1):
-        df_editado.loc[i+1, "Hasta (g)"] = df_editado.loc[i, "Desde (g)"]
+    st.session_state.rangos[calibre] = nuevo_valor
 
-    df_editado["Peso real (kg)"] = (
-        ((df_editado["Desde (g)"] + df_editado["Hasta (g)"]) / 2)
-        * df_editado["Calibre"] / 1000
-    ).round(2)
+    # Botón +
+    if col3.button("➕", key=f"mas_{calibre}"):
+        st.session_state.rangos[calibre] += 1
 
-    st.subheader("📊 Resultado Final")
-    st.dataframe(df_editado, use_container_width=True)
+    # -------- ESPEJO HACIA ABAJO --------
+    if i < len(calibres) - 1:
+        siguiente = calibres[i + 1]
+        st.session_state.rangos[siguiente] = st.session_state.rangos[calibre]
+
+    # -------- CALCULAR PESO REAL --------
+    hasta = st.session_state.rangos[calibre]
+    desde = st.session_state.rangos[calibre]
+
+    peso_real = ((desde + hasta) / 2) * calibre / 1000
+
+    st.write(f"📊 Peso real: **{peso_real:.2f} kg**")
+
+    st.divider()
