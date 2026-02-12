@@ -1,4 +1,4 @@
-import streamlit as st
+
 import pandas as pd
 
 st.set_page_config(page_title="Rangos por Calibre PRO", layout="wide")
@@ -69,24 +69,3 @@ if st.button("🔄 Generar / Recalcular Rangos"):
         })
 
     st.session_state.df = pd.DataFrame(data)
-
-# -----------------------
-# MOSTRAR TABLA EDITABLE
-# -----------------------
-
-if "df" in st.session_state:
-
-    df_editado = st.data_editor(
-        st.session_state.df,
-        num_rows="dynamic",
-        use_container_width=True
-    )
-
-    # Calcular peso real (2 decimales)
-    df_editado["Peso real (kg)"] = (
-        ((df_editado["Desde (g)"] + df_editado["Hasta (g)"]) / 2)
-        * df_editado["Calibre"] / 1000
-    ).round(2)
-
-    st.subheader("📊 Resultado Final")
-    st.dataframe(df_editado, use_container_width=True)
