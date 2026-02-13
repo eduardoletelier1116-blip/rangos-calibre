@@ -12,7 +12,7 @@ calibres_19 = [216,198,175,163,150,138,125,113,100,88,80,72,64]
 calibres_18.sort(reverse=True)
 calibres_19.sort(reverse=True)
 
-# ---------------- SELECCION DE MODO ----------------
+# ---------------- SELECCION MODO ----------------
 
 modo = st.radio(
     "Seleccionar tipo de caja:",
@@ -21,17 +21,24 @@ modo = st.radio(
 )
 
 if modo == "18 KG":
-    peso_objetivo = 18.0
     lista_calibres = calibres_18
     key_prefix = "18"
+    peso_default = 18.00
 else:
-    peso_objetivo = 19.0
     lista_calibres = calibres_19
     key_prefix = "19"
+    peso_default = 19.00
 
-st.subheader(f"⚙ Configuración {modo}")
+# ---------------- PESO EDITABLE ----------------
 
-# ---------------- SELECCION DE CALIBRES ACTIVOS ----------------
+peso_objetivo = st.number_input(
+    f"Peso objetivo {modo}",
+    value=peso_default,
+    step=0.01,
+    format="%.2f"
+)
+
+# ---------------- SELECCION CALIBRES ----------------
 
 calibres_activos = st.multiselect(
     "Seleccionar calibres a trabajar",
@@ -64,6 +71,18 @@ def generar_rangos(calibres, peso_objetivo):
             rangos[calibre] = cortes[i]
 
     return rangos
+
+# ---------------- REINICIO AUTOMATICO SI CAMBIA PESO ----------------
+
+peso_key = f"peso_guardado_{key_prefix}"
+
+if peso_key not in st.session_state:
+    st.session_state[peso_key] = peso_objetivo
+
+if st.session_state[peso_key] != peso_objetivo:
+    if calibres_activos:
+        st.session_state[f"rangos_{key_prefix}"] = generar_rangos(calibres_activos, peso_objetivo)
+    st.session_state[peso_key] = peso_objetivo
 
 # ---------------- CALCULO ----------------
 
@@ -102,7 +121,10 @@ if calibres_activos:
         desde = rangos[calibre]
         peso_real = ((desde + hasta) / 2) * calibre / 1000
 
+        diferencia = peso_real - peso_objetivo
+
         st.write(f"📊 Peso real: **{peso_real:.2f} kg**")
+        st.write(f"🎯 Diferencia: **{diferencia:+.2f} kg**")
         st.divider()
 
     # ---------------- TABLA FINAL ----------------
@@ -121,12 +143,14 @@ if calibres_activos:
             hasta = rangos[calibres_activos[i - 1]]
 
         peso_real = ((desde + hasta) / 2) * calibre / 1000
+        diferencia = peso_real - peso_objetivo
 
         tabla.append({
             "Calibre": calibre,
             "Desde (g)": desde,
             "Hasta (g)": hasta,
-            "Peso real (kg)": round(peso_real, 2)
+            "Peso real (kg)": round(peso_real, 2),
+            "Diferencia (kg)": round(diferencia, 2)
         })
 
     st.dataframe(tabla, use_container_width=True)
