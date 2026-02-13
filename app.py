@@ -113,7 +113,7 @@ for i, fila in enumerate(tabla):
         st.write(f"Hasta: {int(limite_superior)}")
 
     with col5:
-        peso_real = ((desde + hasta)/2 * calibre) / 1000
+        peso_real = (desde * calibre) / 1000
         st.metric("Peso real", f"{peso_real:.1f} kg")
 
     resumen.append({
