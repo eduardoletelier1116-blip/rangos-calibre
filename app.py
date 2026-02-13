@@ -6,7 +6,7 @@ st.title("Calculadora Profesional de Rangos por Calibre")
 CALIBRES_BASE = [216,198,175,163,150,138,125,113,100,88,80,72,64,56]
 
 # ===============================
-# PESOS ARRIBA
+# FILA SUPERIOR COMPLETA
 # ===============================
 
 col1, col2 = st.columns(2)
@@ -33,24 +33,31 @@ with col2:
         key="peso_B"
     )
 
+# Selección de calibres arriba (en línea)
+calibres_A = st.multiselect(
+    "Calibres Peso A",
+    CALIBRES_BASE,
+    default=st.session_state.get("calibres_A", CALIBRES_BASE),
+    key="calibres_A"
+)
+
+calibres_B = st.multiselect(
+    "Calibres Peso B",
+    CALIBRES_BASE,
+    default=st.session_state.get("calibres_B", CALIBRES_BASE),
+    key="calibres_B"
+)
+
 st.markdown("---")
 
 # ===============================
-# FUNCION BLOQUE
+# FUNCIÓN DE BLOQUE
 # ===============================
 
-def bloque(nombre, peso, key_calibres):
-
-    st.subheader(nombre)
-
-    calibres = st.multiselect(
-        f"Seleccionar calibres {nombre}",
-        CALIBRES_BASE,
-        default=st.session_state.get(key_calibres, CALIBRES_BASE),
-        key=key_calibres
-    )
+def bloque(nombre, peso, calibres):
 
     if not calibres:
+        st.warning(f"No hay calibres seleccionados en {nombre}")
         return
 
     calibres = sorted(calibres, reverse=True)
@@ -59,6 +66,7 @@ def bloque(nombre, peso, key_calibres):
     rangos = {}
     limite_superior = None
 
+    # Cálculo automático descendente
     for i, calibre in enumerate(calibres):
 
         peso_unitario = gramos_objetivo / calibre
@@ -74,6 +82,8 @@ def bloque(nombre, peso, key_calibres):
         }
 
         limite_superior = limite_inferior
+
+    st.subheader(nombre)
 
     resumen = []
 
@@ -111,13 +121,13 @@ def bloque(nombre, peso, key_calibres):
     st.dataframe(resumen, use_container_width=True)
 
 # ===============================
-# BLOQUES EN COLUMNAS
+# BLOQUES ABAJO EN COLUMNAS
 # ===============================
 
 colA, colB = st.columns(2)
 
 with colA:
-    bloque("Peso A", peso_A, "calibres_A")
+    bloque("Peso A", peso_A, calibres_A)
 
 with colB:
-    bloque("Peso B", peso_B, "calibres_B")
+    bloque("Peso B", peso_B, calibres_B)
