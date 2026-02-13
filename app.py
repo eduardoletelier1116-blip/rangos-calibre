@@ -1,18 +1,18 @@
 import streamlit as st
 
-st.set_page_config(page_title="Calibrador PRO", layout="wide")
+st.set_page_config(page_title="Calibrador PRO Dual", layout="wide")
 
 st.title("📦 Calibrador Profesional 18 / 19 KG")
 
-# ---------------- LISTAS ----------------
+# ---------------- LISTAS OFICIALES ----------------
 
-calibres_18 = [216,198,178,165,150,135,120,110,100,90,80,70,60]
-calibres_19 = [216,198,175,163,150,138,125,113,100,88,80,72,64]
+calibres_18_base = [216,198,178,165,150,135,120,110,100,90,80,70,60]
+calibres_19_base = [216,198,175,163,150,138,125,113,100,88,80,72,64]
 
-calibres_18.sort(reverse=True)
-calibres_19.sort(reverse=True)
+calibres_18_base.sort(reverse=True)
+calibres_19_base.sort(reverse=True)
 
-# ---------------- INICIALIZAR ESTADOS SOLO UNA VEZ ----------------
+# ---------------- INICIALIZAR ESTADOS ----------------
 
 if "peso_18" not in st.session_state:
     st.session_state.peso_18 = 18.00
@@ -26,42 +26,50 @@ if "rangos_18" not in st.session_state:
 if "rangos_19" not in st.session_state:
     st.session_state.rangos_19 = {}
 
-# ---------------- SELECCION MODO ----------------
+# ---------------- PESOS OBJETIVO ----------------
 
-modo = st.radio(
-    "Seleccionar tipo de caja:",
-    ["18 KG", "19 KG"],
-    horizontal=True
-)
+col1, col2 = st.columns(2)
 
-if modo == "18 KG":
-    lista_calibres = calibres_18
-    key_prefix = "18"
-    peso_objetivo = st.number_input(
+with col1:
+    peso_18 = st.number_input(
         "Peso objetivo 18 KG",
         step=0.01,
         format="%.2f",
         key="peso_18"
     )
-else:
-    lista_calibres = calibres_19
-    key_prefix = "19"
-    peso_objetivo = st.number_input(
+
+with col2:
+    peso_19 = st.number_input(
         "Peso objetivo 19 KG",
         step=0.01,
         format="%.2f",
         key="peso_19"
     )
 
+st.divider()
+
 # ---------------- SELECCION CALIBRES ----------------
 
-calibres_activos = st.multiselect(
-    "Seleccionar calibres a trabajar",
-    lista_calibres,
-    default=lista_calibres
-)
+col3, col4 = st.columns(2)
 
-calibres_activos.sort(reverse=True)
+with col3:
+    st.subheader("Calibres para 18 KG")
+    calibres_18 = st.multiselect(
+        "",
+        calibres_18_base,
+        default=calibres_18_base
+    )
+
+with col4:
+    st.subheader("Calibres para 19 KG")
+    calibres_19 = st.multiselect(
+        "",
+        calibres_19_base,
+        default=calibres_19_base
+    )
+
+calibres_18.sort(reverse=True)
+calibres_19.sort(reverse=True)
 
 # ---------------- FUNCION GENERAR RANGOS ----------------
 
@@ -87,19 +95,22 @@ def generar_rangos(calibres, peso_objetivo):
 
     return rangos
 
-# ---------------- INICIALIZAR RANGOS SOLO SI VACIO ----------------
+# ---------------- BLOQUE CALCULO ----------------
 
-if calibres_activos:
+def bloque(calibres, peso_objetivo, key_prefix):
+
+    if not calibres:
+        return
 
     if not st.session_state[f"rangos_{key_prefix}"]:
-        st.session_state[f"rangos_{key_prefix}"] = generar_rangos(calibres_activos, peso_objetivo)
+        st.session_state[f"rangos_{key_prefix}"] = generar_rangos(calibres, peso_objetivo)
 
     rangos = st.session_state[f"rangos_{key_prefix}"]
     peso_g = peso_objetivo * 1000
 
-    st.divider()
+    st.header(f"⚖ Configuración {peso_objetivo:.2f} KG")
 
-    for i, calibre in enumerate(calibres_activos):
+    for i, calibre in enumerate(calibres):
 
         st.subheader(f"Calibre {calibre}")
 
@@ -119,7 +130,7 @@ if calibres_activos:
         if i == 0:
             hasta = round(peso_g / calibre)
         else:
-            hasta = rangos[calibres_activos[i - 1]]
+            hasta = rangos[calibres[i - 1]]
 
         desde = rangos[calibre]
         peso_real = ((desde + hasta) / 2) * calibre / 1000
@@ -129,20 +140,17 @@ if calibres_activos:
         st.write(f"🎯 Diferencia: **{diferencia:+.2f} kg**")
         st.divider()
 
-    # ---------------- TABLA FINAL ----------------
-
-    st.subheader("📋 Tabla Final")
-
+    # Tabla final
     tabla = []
 
-    for i, calibre in enumerate(calibres_activos):
+    for i, calibre in enumerate(calibres):
 
         desde = rangos[calibre]
 
         if i == 0:
             hasta = round(peso_g / calibre)
         else:
-            hasta = rangos[calibres_activos[i - 1]]
+            hasta = rangos[calibres[i - 1]]
 
         peso_real = ((desde + hasta) / 2) * calibre / 1000
         diferencia = peso_real - peso_objetivo
@@ -156,3 +164,14 @@ if calibres_activos:
         })
 
     st.dataframe(tabla, use_container_width=True)
+
+
+st.divider()
+
+col5, col6 = st.columns(2)
+
+with col5:
+    bloque(calibres_18, peso_18, "18")
+
+with col6:
+    bloque(calibres_19, peso_19, "19")
