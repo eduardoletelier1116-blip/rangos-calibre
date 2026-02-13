@@ -1,8 +1,8 @@
 import streamlit as st
 
-st.set_page_config(page_title="Calibrador PRO Doble", layout="wide")
+st.set_page_config(page_title="Calibrador PRO Mixto", layout="wide")
 
-st.title("📦 Calibrador Profesional Doble Peso")
+st.title("📦 Calibrador Profesional Mixto 18 / 19 KG")
 
 # ---------------- FUNCION GENERADORA ----------------
 
@@ -29,44 +29,62 @@ def generar_rangos(calibres, peso_objetivo):
     return rangos
 
 
-# ---------------- FUNCION BLOQUE COMPLETO ----------------
+# ---------------- CONFIGURACION GENERAL ----------------
 
-def bloque_peso(nombre, peso_default, key_prefix):
+calibres_default = [216,198,175,163,150,138,125,113,100,88,80,72,64,56]
 
-    st.header(f"⚖ {nombre}")
+calibres_input = st.text_input(
+    "Calibres disponibles (separados por coma)",
+    value=",".join(map(str, calibres_default))
+)
 
-    peso = st.number_input(
-        f"Peso objetivo {nombre} (kg)",
-        value=peso_default,
-        step=0.1,
-        format="%.2f",
-        key=f"peso_{key_prefix}"
+calibres = [int(c.strip()) for c in calibres_input.split(",") if c.strip()]
+calibres.sort(reverse=True)
+
+col1, col2 = st.columns(2)
+
+with col1:
+    peso_19 = st.number_input("Peso objetivo 19 KG", value=19.0, step=0.1)
+
+with col2:
+    peso_18 = st.number_input("Peso objetivo 18 KG", value=18.0, step=0.1)
+
+st.subheader("Seleccionar calibres por peso")
+
+col3, col4 = st.columns(2)
+
+with col3:
+    calibres_19 = st.multiselect(
+        "Calibres que irán a 19 KG",
+        calibres,
+        default=[c for c in calibres if c >= 100]
     )
 
-    calibres_default = [216,198,175,163,150,138,125,113,100,88,80,72,64,56]
-
-    calibres_input = st.text_input(
-        f"Calibres {nombre} (separados por coma)",
-        value=",".join(map(str, calibres_default)),
-        key=f"calibres_{key_prefix}"
+with col4:
+    calibres_18 = st.multiselect(
+        "Calibres que irán a 18 KG",
+        calibres,
+        default=[c for c in calibres if c < 100]
     )
 
-    calibres = [int(c.strip()) for c in calibres_input.split(",") if c.strip()]
-    calibres.sort(reverse=True)
+# ---------------- PROCESAMIENTO ----------------
+
+def procesar_bloque(calibres_sel, peso_objetivo, key_prefix):
+
+    if not calibres_sel:
+        return
+
+    calibres_sel.sort(reverse=True)
 
     if f"rangos_{key_prefix}" not in st.session_state:
-        st.session_state[f"rangos_{key_prefix}"] = generar_rangos(calibres, peso)
-
-    if st.button(f"🔄 Recalcular {nombre}", key=f"recalcular_{key_prefix}"):
-        st.session_state[f"rangos_{key_prefix}"] = generar_rangos(calibres, peso)
+        st.session_state[f"rangos_{key_prefix}"] = generar_rangos(calibres_sel, peso_objetivo)
 
     rangos = st.session_state[f"rangos_{key_prefix}"]
-    peso_g = peso * 1000
+    peso_g = peso_objetivo * 1000
 
-    st.divider()
+    st.header(f"⚖ Configuración {peso_objetivo} KG")
 
-    # -------- BLOQUES OPERARIO --------
-    for i, calibre in enumerate(calibres):
+    for i, calibre in enumerate(calibres_sel):
 
         st.subheader(f"Calibre {calibre}")
 
@@ -86,7 +104,7 @@ def bloque_peso(nombre, peso_default, key_prefix):
         if i == 0:
             hasta = round(peso_g / calibre)
         else:
-            hasta = rangos[calibres[i - 1]]
+            hasta = rangos[calibres_sel[i - 1]]
 
         desde = rangos[calibre]
         peso_real = ((desde + hasta) / 2) * calibre / 1000
@@ -94,19 +112,19 @@ def bloque_peso(nombre, peso_default, key_prefix):
         st.write(f"📊 Peso real: **{peso_real:.2f} kg**")
         st.divider()
 
-    # -------- TABLA FINAL --------
-    st.subheader(f"📋 Tabla Final {nombre}")
+    # TABLA
+    st.subheader(f"📋 Tabla Final {peso_objetivo} KG")
 
     tabla = []
 
-    for i, calibre in enumerate(calibres):
+    for i, calibre in enumerate(calibres_sel):
 
         desde = rangos[calibre]
 
         if i == 0:
             hasta = round(peso_g / calibre)
         else:
-            hasta = rangos[calibres[i - 1]]
+            hasta = rangos[calibres_sel[i - 1]]
 
         peso_real = ((desde + hasta) / 2) * calibre / 1000
 
@@ -120,8 +138,8 @@ def bloque_peso(nombre, peso_default, key_prefix):
     st.dataframe(tabla, use_container_width=True)
 
 
-# ---------------- EJECUTAR BLOQUES ----------------
-
-bloque_peso("19 KG", 19.0, "19")
 st.divider()
-bloque_peso("18 KG", 18.0, "18")
+
+procesar_bloque(calibres_19, peso_19, "19")
+st.divider()
+procesar_bloque(calibres_18, peso_18, "18")
