@@ -6,7 +6,7 @@ st.title("Calculadora Profesional de Rangos por Calibre")
 CALIBRES_BASE = [216,198,175,163,150,138,125,113,100,88,80,72,64,56]
 
 # ===============================
-# FILA SUPERIOR COMPLETA
+# PESOS ARRIBA
 # ===============================
 
 col1, col2 = st.columns(2)
@@ -33,7 +33,10 @@ with col2:
         key="peso_B"
     )
 
-# Selección de calibres arriba (en línea)
+# ===============================
+# SELECCIÓN ARRIBA
+# ===============================
+
 calibres_A = st.multiselect(
     "Calibres Peso A",
     CALIBRES_BASE,
@@ -44,90 +47,85 @@ calibres_A = st.multiselect(
 calibres_B = st.multiselect(
     "Calibres Peso B",
     CALIBRES_BASE,
-    default=st.session_state.get("calibres_B", CALIBRES_BASE),
+    default=st.session_state.get("calibres_B", []),
     key="calibres_B"
 )
 
 st.markdown("---")
 
 # ===============================
-# FUNCIÓN DE BLOQUE
+# UNIFICAR Y ORDENAR
 # ===============================
 
-def bloque(nombre, peso, calibres):
+tabla = []
 
-    if not calibres:
-        st.warning(f"No hay calibres seleccionados en {nombre}")
-        return
+for c in calibres_A:
+    tabla.append({"calibre": c, "peso": peso_A, "grupo": "A"})
 
-    calibres = sorted(calibres, reverse=True)
+for c in calibres_B:
+    tabla.append({"calibre": c, "peso": peso_B, "grupo": "B"})
+
+if not tabla:
+    st.warning("No hay calibres seleccionados.")
+    st.stop()
+
+# Ordenar mayor a menor
+tabla = sorted(tabla, key=lambda x: x["calibre"], reverse=True)
+
+# ===============================
+# CÁLCULO DE RANGOS EN CASCADA
+# ===============================
+
+limite_superior = None
+resumen = []
+
+for i, fila in enumerate(tabla):
+
+    calibre = fila["calibre"]
+    peso = fila["peso"]
+    grupo = fila["grupo"]
+
     gramos_objetivo = peso * 1000
+    peso_unitario = gramos_objetivo / calibre
 
-    rangos = {}
-    limite_superior = None
+    if i == 0:
+        limite_superior = round(peso_unitario * 1.05, 0)
 
-    # Cálculo automático descendente
-    for i, calibre in enumerate(calibres):
+    limite_inferior = round(peso_unitario, 0)
 
-        peso_unitario = gramos_objetivo / calibre
+    col1, col2, col3, col4, col5 = st.columns([1,1,1,1,1])
 
-        if i == 0:
-            limite_superior = round(peso_unitario * 1.05, 0)
+    with col1:
+        st.markdown(f"### {calibre}")
 
-        limite_inferior = round(peso_unitario, 0)
+    with col2:
+        st.write(f"{peso:.1f} kg")
 
-        rangos[calibre] = {
-            "desde": limite_inferior,
-            "hasta": limite_superior
-        }
+    with col3:
+        desde = st.number_input(
+            "Desde",
+            value=float(limite_inferior),
+            step=1.0,
+            key=f"desde_{calibre}_{grupo}"
+        )
 
-        limite_superior = limite_inferior
+    with col4:
+        st.write(f"Hasta: {int(limite_superior)}")
 
-    st.subheader(nombre)
+    with col5:
+        peso_real = (desde * calibre) / 1000
+        st.metric("Peso real", f"{peso_real:.1f} kg")
 
-    resumen = []
+    resumen.append({
+        "Calibre": calibre,
+        "Grupo": grupo,
+        "Peso Objetivo": peso,
+        "Desde": int(desde),
+        "Hasta": int(limite_superior),
+        "Peso Real (kg)": round(peso_real,1)
+    })
 
-    for calibre in calibres:
+    limite_superior = desde  # cascada real dinámica
 
-        col1, col2, col3, col4 = st.columns([1,1,1,1])
-
-        with col1:
-            st.markdown(f"### {calibre}")
-
-        with col2:
-            desde = st.number_input(
-                "Desde",
-                value=float(rangos[calibre]["desde"]),
-                step=1.0,
-                key=f"{nombre}_desde_{calibre}"
-            )
-
-        with col3:
-            hasta = rangos[calibre]["hasta"]
-            st.write(f"Hasta: {int(hasta)}")
-
-        with col4:
-            peso_real = (desde * calibre) / 1000
-            st.metric("Peso real", f"{peso_real:.1f} kg")
-
-        resumen.append({
-            "Calibre": calibre,
-            "Desde": int(desde),
-            "Hasta": int(hasta),
-            "Peso Real (kg)": round(peso_real,1)
-        })
-
-    st.markdown("### 📋 Tabla Resumen")
-    st.dataframe(resumen, use_container_width=True)
-
-# ===============================
-# BLOQUES ABAJO EN COLUMNAS
-# ===============================
-
-colA, colB = st.columns(2)
-
-with colA:
-    bloque("Peso A", peso_A, calibres_A)
-
-with colB:
-    bloque("Peso B", peso_B, calibres_B)
+st.markdown("### 📋 Tabla Final Unificada")
+st.dataframe(resumen, use_container_width=True)
