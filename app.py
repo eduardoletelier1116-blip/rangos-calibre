@@ -4,13 +4,27 @@ st.set_page_config(page_title="Calibrador PRO", layout="wide")
 
 st.title("📦 Calibrador Profesional 18 / 19 KG")
 
-# ---------------- LISTAS OFICIALES ----------------
+# ---------------- LISTAS ----------------
 
 calibres_18 = [216,198,178,165,150,135,120,110,100,90,80,70,60]
 calibres_19 = [216,198,175,163,150,138,125,113,100,88,80,72,64]
 
 calibres_18.sort(reverse=True)
 calibres_19.sort(reverse=True)
+
+# ---------------- INICIALIZAR ESTADOS SOLO UNA VEZ ----------------
+
+if "peso_18" not in st.session_state:
+    st.session_state.peso_18 = 18.00
+
+if "peso_19" not in st.session_state:
+    st.session_state.peso_19 = 19.00
+
+if "rangos_18" not in st.session_state:
+    st.session_state.rangos_18 = {}
+
+if "rangos_19" not in st.session_state:
+    st.session_state.rangos_19 = {}
 
 # ---------------- SELECCION MODO ----------------
 
@@ -20,17 +34,9 @@ modo = st.radio(
     horizontal=True
 )
 
-# Inicializar pesos si no existen
-if "peso_18" not in st.session_state:
-    st.session_state["peso_18"] = 18.00
-
-if "peso_19" not in st.session_state:
-    st.session_state["peso_19"] = 19.00
-
 if modo == "18 KG":
     lista_calibres = calibres_18
     key_prefix = "18"
-
     peso_objetivo = st.number_input(
         "Peso objetivo 18 KG",
         step=0.01,
@@ -40,7 +46,6 @@ if modo == "18 KG":
 else:
     lista_calibres = calibres_19
     key_prefix = "19"
-
     peso_objetivo = st.number_input(
         "Peso objetivo 19 KG",
         step=0.01,
@@ -48,7 +53,7 @@ else:
         key="peso_19"
     )
 
-# ---------------- SELECCION CALIBRES ACTIVOS ----------------
+# ---------------- SELECCION CALIBRES ----------------
 
 calibres_activos = st.multiselect(
     "Seleccionar calibres a trabajar",
@@ -82,19 +87,17 @@ def generar_rangos(calibres, peso_objetivo):
 
     return rangos
 
-# ---------------- INICIALIZAR RANGOS ----------------
+# ---------------- INICIALIZAR RANGOS SOLO SI VACIO ----------------
 
 if calibres_activos:
 
-    if f"rangos_{key_prefix}" not in st.session_state:
+    if not st.session_state[f"rangos_{key_prefix}"]:
         st.session_state[f"rangos_{key_prefix}"] = generar_rangos(calibres_activos, peso_objetivo)
 
     rangos = st.session_state[f"rangos_{key_prefix}"]
     peso_g = peso_objetivo * 1000
 
     st.divider()
-
-    # ---------------- BLOQUES OPERADOR ----------------
 
     for i, calibre in enumerate(calibres_activos):
 
