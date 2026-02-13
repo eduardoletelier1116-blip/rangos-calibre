@@ -1,51 +1,64 @@
 import streamlit as st
 
 st.set_page_config(layout="wide")
-
 st.title("Calculadora Profesional de Rangos por Calibre")
-
-# ===============================
-# CONFIGURACIÓN BASE
-# ===============================
 
 CALIBRES_BASE = [216,198,175,163,150,138,125,113,100,88,80,72,64,56]
 
 # ===============================
-# FUNCION PRINCIPAL
+# PESOS ARRIBA
 # ===============================
 
-def bloque_peso(nombre, peso_key, calibres_key):
+col1, col2 = st.columns(2)
 
-    st.subheader(nombre)
-
-    peso_objetivo = st.number_input(
-        f"Peso objetivo {nombre} (kg)",
+with col1:
+    peso_A = st.number_input(
+        "Peso A (kg)",
         min_value=10.0,
         max_value=25.0,
-        value=st.session_state.get(peso_key, 19.0),
+        value=st.session_state.get("peso_A", 19.0),
         step=0.1,
         format="%.1f",
-        key=peso_key
+        key="peso_A"
     )
+
+with col2:
+    peso_B = st.number_input(
+        "Peso B (kg)",
+        min_value=10.0,
+        max_value=25.0,
+        value=st.session_state.get("peso_B", 18.0),
+        step=0.1,
+        format="%.1f",
+        key="peso_B"
+    )
+
+st.markdown("---")
+
+# ===============================
+# FUNCION BLOQUE
+# ===============================
+
+def bloque(nombre, peso, key_calibres):
+
+    st.subheader(nombre)
 
     calibres = st.multiselect(
         f"Seleccionar calibres {nombre}",
         CALIBRES_BASE,
-        default=st.session_state.get(calibres_key, CALIBRES_BASE),
-        key=calibres_key
+        default=st.session_state.get(key_calibres, CALIBRES_BASE),
+        key=key_calibres
     )
 
     if not calibres:
         return
 
     calibres = sorted(calibres, reverse=True)
-
-    gramos_objetivo = peso_objetivo * 1000
+    gramos_objetivo = peso * 1000
 
     rangos = {}
     limite_superior = None
 
-    # Calcular automáticamente desde arriba
     for i, calibre in enumerate(calibres):
 
         peso_unitario = gramos_objetivo / calibre
@@ -53,7 +66,7 @@ def bloque_peso(nombre, peso_key, calibres_key):
         if i == 0:
             limite_superior = round(peso_unitario * 1.05, 0)
 
-        limite_inferior = round(gramos_objetivo / calibre, 0)
+        limite_inferior = round(peso_unitario, 0)
 
         rangos[calibre] = {
             "desde": limite_inferior,
@@ -61,8 +74,6 @@ def bloque_peso(nombre, peso_key, calibres_key):
         }
 
         limite_superior = limite_inferior
-
-    st.markdown("---")
 
     resumen = []
 
@@ -93,21 +104,20 @@ def bloque_peso(nombre, peso_key, calibres_key):
             "Calibre": calibre,
             "Desde": int(desde),
             "Hasta": int(hasta),
-            "Peso Real": round(peso_real,1)
+            "Peso Real (kg)": round(peso_real,1)
         })
 
     st.markdown("### 📋 Tabla Resumen")
     st.dataframe(resumen, use_container_width=True)
 
-
 # ===============================
-# INTERFAZ DOBLE
+# BLOQUES EN COLUMNAS
 # ===============================
 
 colA, colB = st.columns(2)
 
 with colA:
-    bloque_peso("Peso A", "peso_A", "calibres_A")
+    bloque("Peso A", peso_A, "calibres_A")
 
 with colB:
-    bloque_peso("Peso B", "peso_B", "calibres_B")
+    bloque("Peso B", peso_B, "calibres_B")
