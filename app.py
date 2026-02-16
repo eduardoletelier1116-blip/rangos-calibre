@@ -10,87 +10,122 @@ st.markdown(
 CALIBRES_BASE = [216,198,175,163,150,138,125,113,100,88,80,72,64,56]
 
 # ===============================
-# PESO OBJETIVO
+# PESOS POR GRUPO
 # ===============================
 
-peso_objetivo = st.number_input(
-    "Peso Objetivo (kg)",
-    min_value=10.0,
-    max_value=25.0,
-    value=19.0,
-    step=0.1,
-    format="%.1f"
-)
+col1, col2 = st.columns(2)
 
-calibres = st.multiselect(
-    "Seleccionar Calibres",
+with col1:
+    peso_A = st.number_input(
+        "Peso Grupo A (kg)",
+        min_value=10.0,
+        max_value=25.0,
+        value=19.0,
+        step=0.1,
+        format="%.1f"
+    )
+
+with col2:
+    peso_B = st.number_input(
+        "Peso Grupo B (kg)",
+        min_value=10.0,
+        max_value=25.0,
+        value=18.0,
+        step=0.1,
+        format="%.1f"
+    )
+
+# ===============================
+# SELECCIÓN
+# ===============================
+
+calibres_A = st.multiselect(
+    "Calibres Grupo A",
     CALIBRES_BASE,
-    default=CALIBRES_BASE
+    default=[]
 )
 
-if not calibres:
-    st.stop()
-
-calibres = sorted(calibres, reverse=True)
+calibres_B = st.multiselect(
+    "Calibres Grupo B",
+    CALIBRES_BASE,
+    default=[]
+)
 
 st.markdown("---")
 
 # ===============================
-# CÁLCULO EN CASCADA EDITABLE
+# FUNCIÓN DE CÁLCULO CASCADA
 # ===============================
 
-limite_superior = None
-tabla = []
+def calcular_grupo(calibres, peso, grupo):
 
-for i, calibre in enumerate(calibres):
+    if not calibres:
+        return []
 
-    gramos_objetivo = peso_objetivo * 1000
-    promedio_teorico = gramos_objetivo / calibre
+    calibres = sorted(calibres, reverse=True)
+    limite_superior = None
+    resultado = []
 
-    key_name = f"desde_{calibre}"
+    for i, calibre in enumerate(calibres):
 
-    # Valor inicial correcto si no existe
-    if key_name not in st.session_state:
-        st.session_state[key_name] = round(promedio_teorico)
+        promedio_teorico = (peso * 1000) / calibre
 
-    desde = st.number_input(
-        f"Calibre {calibre} - Desde (mín g)",
-        step=1.0,
-        key=key_name
-    )
+        # Amplitud base de 24 gramos (ajustable si quieres)
+        min_inicial = round(promedio_teorico - 12)
+        max_inicial = round(promedio_teorico + 12)
 
-    # CASCADA
-    if i == 0:
-        hasta = round(promedio_teorico)
-    else:
-        hasta = limite_superior
+        key_min = f"{grupo}_{calibre}_min"
 
-    promedio_real = (desde + hasta) / 2
-    peso_real = (promedio_real * calibre) / 1000
+        if key_min not in st.session_state:
+            st.session_state[key_min] = min_inicial
 
-    col1, col2, col3, col4 = st.columns([1,1,1,1])
+        minimo = st.number_input(
+            f"{grupo} - Calibre {calibre} Mín (g)",
+            step=1.0,
+            key=key_min
+        )
 
-    with col1:
-        st.write(f"### {calibre}")
+        if i == 0:
+            maximo = max_inicial
+        else:
+            maximo = limite_superior
 
-    with col2:
-        st.write(f"Mín: {int(desde)} g")
+        promedio_real = (minimo + maximo) / 2
+        peso_real = (promedio_real * calibre) / 1000
 
-    with col3:
-        st.write(f"Máx: {int(hasta)} g")
+        col1, col2, col3, col4 = st.columns([1,1,1,1])
 
-    with col4:
-        st.metric("Peso Real", f"{peso_real:.1f} kg")
+        with col1:
+            st.write(f"### {grupo} - {calibre}")
 
-    tabla.append({
-        "Calibre": calibre,
-        "Mínimo (g)": int(desde),
-        "Máximo (g)": int(hasta),
-        "Promedio (g)": round(promedio_real,1),
-        "Peso Real (kg)": round(peso_real,1)
-    })
+        with col2:
+            st.write(f"Mín: {int(minimo)} g")
 
-    limite_superior = desde
+        with col3:
+            st.write(f"Máx: {int(maximo)} g")
 
-st.markdown("### 📋 Tabla Final para Máquina")
-st.dataframe(tabla, use_container_width=True)
+        with col4:
+            st.metric("Peso Real", f"{peso_real:.1f} kg")
+
+        resultado.append({
+            "Grupo": grupo,
+            "Calibre": calibre,
+            "Mínimo (g)": int(minimo),
+            "Máximo (g)": int(maximo),
+            "Promedio (g)": round(promedio_real,1),
+            "Peso Real (kg)": round(peso_real,1)
+        })
+
+        limite_superior = minimo
+
+    return resultado
+
+
+tabla_final = []
+
+tabla_final += calcular_grupo(calibres_A, peso_A, "A")
+tabla_final += calcular_grupo(calibres_B, peso_B, "B")
+
+if tabla_final:
+    st.markdown("### 📋 Tabla Final")
+    st.dataframe(tabla_final, use_container_width=True)
