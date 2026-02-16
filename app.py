@@ -41,10 +41,10 @@ with col_s2:
 st.divider()
 
 # -------------------------------------------------
-# FUNCIÓN CASCADA EDITABLE REAL
+# FUNCIÓN CASCADA PERFECTAMENTE CENTRADA
 # -------------------------------------------------
 
-def calcular_cascada_editable(grupo, peso_objetivo, nombre):
+def calcular_cascada(grupo, peso_objetivo, nombre):
 
     if not grupo:
         return
@@ -59,9 +59,18 @@ def calcular_cascada_editable(grupo, peso_objetivo, nombre):
 
         key_min = f"{nombre}_{calibre}_min"
 
-        # Valor inicial centrado
+        # -------------------------------------------------
+        # INICIO PERFECTAMENTE CENTRADO
+        # -------------------------------------------------
         if key_min not in st.session_state:
-            st.session_state[key_min] = round(promedio_obj * 0.95)
+            if i == 0:
+                # Primer calibre → rango simétrico ±10g
+                minimo_inicial = round(promedio_obj - 10)
+            else:
+                # Cascada perfecta
+                minimo_inicial = round((2 * promedio_obj) - limite_superior)
+
+            st.session_state[key_min] = minimo_inicial
 
         minimo = st.number_input(
             f"{nombre} - {calibre} Mín (g)",
@@ -69,24 +78,28 @@ def calcular_cascada_editable(grupo, peso_objetivo, nombre):
             key=key_min
         )
 
+        # -------------------------------------------------
         # CASCADA REAL
+        # -------------------------------------------------
         if i == 0:
-            maximo = round((promedio_obj * 2) - minimo)
+            maximo = round((2 * promedio_obj) - minimo)
         else:
             maximo = limite_superior
 
         promedio_real = (minimo + maximo) / 2
         peso_real = (promedio_real * calibre) / 1000
 
-        col1, col2, col3 = st.columns(3)
+        diferencia = peso_real - peso_objetivo
+
+        col1, col2, col3, col4 = st.columns(4)
 
         col1.metric("Mín (g)", f"{int(minimo)}")
         col2.metric("Máx (g)", f"{int(maximo)}")
         col3.metric("Peso Real", f"{peso_real:.1f} kg")
+        col4.metric("Δ vs Obj", f"{diferencia:+.1f} kg")
 
         st.divider()
 
-        # El mínimo actual pasa a ser el máximo del siguiente
         limite_superior = minimo
 
 
@@ -97,7 +110,7 @@ def calcular_cascada_editable(grupo, peso_objetivo, nombre):
 colA, colB = st.columns(2)
 
 with colA:
-    calcular_cascada_editable(grupoA, peso_A, "A")
+    calcular_cascada(grupoA, peso_A, "A")
 
 with colB:
-    calcular_cascada_editable(grupoB, peso_B, "B")
+    calcular_cascada(grupoB, peso_B, "B")
