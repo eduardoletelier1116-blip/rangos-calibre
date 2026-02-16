@@ -1,123 +1,85 @@
 import streamlit as st
 
-st.set_page_config(layout="wide")
+st.set_page_config(page_title="Calculadora de Rangos por Calibre", layout="wide")
 
-st.markdown(
-    "<h1 style='text-align:center;'>🍎 Calculadora Profesional de Rangos</h1>",
-    unsafe_allow_html=True
-)
+st.title("🍎 Calculadora de Rangos en Cascada")
 
-CALIBRES_BASE = [216,198,175,163,150,138,125,113,100,88,80,72,64,56]
+# -----------------------------
+# CONFIGURACIÓN GENERAL
+# -----------------------------
 
-# ===============================
-# PESOS POR GRUPO
-# ===============================
+peso_objetivo = st.number_input("Peso objetivo caja (kg)", value=19.2, step=0.1, format="%.1f")
 
-col1, col2 = st.columns(2)
+st.divider()
 
-with col1:
-    peso_A = st.number_input(
-        "Peso Grupo A (kg)",
-        min_value=10.0,
-        max_value=25.0,
-        value=19.0,
-        step=0.1,
-        format="%.1f"
-    )
+grupoA_input = st.text_input("Calibres Grupo A (separados por coma)", "125,113,100")
+grupoB_input = st.text_input("Calibres Grupo B (separados por coma)", "88,80")
 
-with col2:
-    peso_B = st.number_input(
-        "Peso Grupo B (kg)",
-        min_value=10.0,
-        max_value=25.0,
-        value=18.0,
-        step=0.1,
-        format="%.1f"
-    )
+def parse_calibres(texto):
+    return sorted([int(x.strip()) for x in texto.split(",") if x.strip().isdigit()], reverse=True)
 
-# ===============================
-# SELECCIÓN
-# ===============================
+grupoA = parse_calibres(grupoA_input)
+grupoB = parse_calibres(grupoB_input)
 
-calibres_A = st.multiselect(
-    "Calibres Grupo A",
-    CALIBRES_BASE,
-    default=[]
-)
+recalcular = st.button("🔄 Recalcular")
 
-calibres_B = st.multiselect(
-    "Calibres Grupo B",
-    CALIBRES_BASE,
-    default=[]
-)
+st.divider()
 
-st.markdown("---")
+# -----------------------------
+# FUNCIÓN DE CÁLCULO REAL
+# -----------------------------
 
-# ===============================
-# FUNCIÓN DE CÁLCULO CASCADA
-# ===============================
+def calcular_rangos(calibre, peso_objetivo):
+    """
+    Calcula rango mínimo y máximo en cascada
+    El promedio del rango * calibre = peso objetivo
+    """
+    peso_promedio = (peso_objetivo * 1000) / calibre
 
-def calcular_grupo(calibres, peso, grupo):
+    # amplitud cascada (ajustable si quieres más precisión)
+    amplitud = peso_promedio * 0.06  
 
-    if not calibres:
-        return []
+    minimo = peso_promedio - amplitud
+    maximo = peso_promedio + amplitud
 
-    calibres = sorted(calibres, reverse=True)
-    limite_superior = None
-    resultado = []
+    peso_real = (peso_promedio * calibre) / 1000
 
-    for i, calibre in enumerate(calibres):
+    return round(minimo), round(maximo), round(peso_real, 1)
 
-        promedio_teorico = (peso * 1000) / calibre
 
-        key_min = f"{grupo}_{calibre}_min"
+# -----------------------------
+# MOSTRAR RESULTADOS
+# -----------------------------
 
-        if i == 0:
-            # Primer calibre → rango centrado normal
-            min_inicial = round(promedio_teorico - 12)
-            maximo = round(promedio_teorico + 12)
+colA, colB = st.columns(2)
 
-        else:
-            # Cascada correcta
-            maximo = limite_superior
-            min_inicial = round((2 * promedio_teorico) - maximo)
+with colA:
+    st.subheader("Grupo A")
 
-        if key_min not in st.session_state:
-            st.session_state[key_min] = min_inicial
+    for calibre in grupoA:
+        min_g, max_g, peso_real = calcular_rangos(calibre, peso_objetivo)
 
-        minimo = st.number_input(
-            f"{grupo} - Calibre {calibre} Mín (g)",
-            step=1.0,
-            key=key_min
-        )
+        st.markdown(f"### A - {calibre}")
+        c1, c2, c3 = st.columns([1,1,1])
 
-        promedio_real = (minimo + maximo) / 2
-        peso_real = (promedio_real * calibre) / 1000
+        c1.metric("Mín (g)", f"{min_g}")
+        c2.metric("Máx (g)", f"{max_g}")
+        c3.metric("Peso Real", f"{peso_real} kg")
 
-        col1, col2, col3, col4 = st.columns([1,1,1,1])
+        st.divider()
 
-        with col1:
-            st.write(f"### {grupo} - {calibre}")
 
-        with col2:
-            st.write(f"Mín: {int(minimo)} g")
+with colB:
+    st.subheader("Grupo B")
 
-        with col3:
-            st.write(f"Máx: {int(maximo)} g")
+    for calibre in grupoB:
+        min_g, max_g, peso_real = calcular_rangos(calibre, peso_objetivo)
 
-        with col4:
-            st.metric("Peso Real", f"{peso_real:.1f} kg")
+        st.markdown(f"### B - {calibre}")
+        c1, c2, c3 = st.columns([1,1,1])
 
-        resultado.append({
-            "Grupo": grupo,
-            "Calibre": calibre,
-            "Mínimo (g)": int(minimo),
-            "Máximo (g)": int(maximo),
-            "Promedio (g)": round(promedio_real,1),
-            "Peso Real (kg)": round(peso_real,1)
-        })
+        c1.metric("Mín (g)", f"{min_g}")
+        c2.metric("Máx (g)", f"{max_g}")
+        c3.metric("Peso Real", f"{peso_real} kg")
 
-        # El mínimo actual pasa a ser el máximo del siguiente
-        limite_superior = minimo
-
-    return resultado
+        st.divider()
