@@ -1,181 +1,131 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Sistema de Producción</title>
+import streamlit as st
 
-<style>
-body{
-  margin:0;
-  font-family: 'Segoe UI', sans-serif;
-  background:#f4f6f9;
-}
+st.set_page_config(layout="wide")
+st.title("Calculadora Profesional de Rangos por Calibre")
 
-header{
-  background: linear-gradient(90deg,#1e3c72,#2a5298);
-  color:white;
-  padding:20px;
-  text-align:center;
-  font-size:22px;
-  font-weight:bold;
-  letter-spacing:1px;
-}
+CALIBRES_BASE = [216,198,175,163,150,138,125,113,100,88,80,72,64,56]
 
-.container{
-  max-width:900px;
-  margin:30px auto;
-  padding:20px;
-}
+# ===============================
+# PESOS ARRIBA
+# ===============================
 
-.card{
-  background:white;
-  padding:25px;
-  border-radius:12px;
-  box-shadow:0 5px 15px rgba(0,0,0,0.08);
-  margin-bottom:30px;
-}
+col1, col2 = st.columns(2)
 
-.card h2{
-  margin-top:0;
-  color:#2a5298;
-}
+with col1:
+    peso_A = st.number_input(
+        "Peso A (kg)",
+        min_value=10.0,
+        max_value=25.0,
+        value=st.session_state.get("peso_A", 19.0),
+        step=0.1,
+        format="%.1f",
+        key="peso_A"
+    )
 
-label{
-  font-weight:600;
-  font-size:14px;
-}
+with col2:
+    peso_B = st.number_input(
+        "Peso B (kg)",
+        min_value=10.0,
+        max_value=25.0,
+        value=st.session_state.get("peso_B", 18.0),
+        step=0.1,
+        format="%.1f",
+        key="peso_B"
+    )
 
-input, select{
-  width:100%;
-  padding:10px;
-  margin:8px 0 15px 0;
-  border-radius:8px;
-  border:1px solid #ddd;
-  font-size:14px;
-  box-sizing:border-box;
-}
+# ===============================
+# SELECCIÓN ARRIBA
+# ===============================
 
-select{
-  appearance:none;
-  background:white url("data:image/svg+xml;utf8,<svg fill='%232a5298' height='20' viewBox='0 0 24 24' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>") no-repeat right 10px center;
-  background-size:15px;
-}
+calibres_A = st.multiselect(
+    "Calibres Peso A",
+    CALIBRES_BASE,
+    default=st.session_state.get("calibres_A", CALIBRES_BASE),
+    key="calibres_A"
+)
 
-button{
-  background:#2a5298;
-  color:white;
-  border:none;
-  padding:12px;
-  width:100%;
-  border-radius:8px;
-  font-size:16px;
-  cursor:pointer;
-  transition:0.3s;
-}
+calibres_B = st.multiselect(
+    "Calibres Peso B",
+    CALIBRES_BASE,
+    default=st.session_state.get("calibres_B", []),
+    key="calibres_B"
+)
 
-button:hover{
-  background:#1e3c72;
-}
+st.markdown("---")
 
-.footer{
-  text-align:center;
-  font-size:12px;
-  color:#888;
-  margin-top:20px;
-}
-</style>
-</head>
+# ===============================
+# UNIFICAR Y ORDENAR
+# ===============================
 
-<body>
+tabla = []
 
-<header>
-Sistema de Registro de Producción
-</header>
+for c in calibres_A:
+    tabla.append({"calibre": c, "peso": peso_A, "grupo": "A"})
 
-<div class="container">
+for c in calibres_B:
+    tabla.append({"calibre": c, "peso": peso_B, "grupo": "B"})
 
-<div class="card">
-<h2>Nuevo Registro</h2>
+if not tabla:
+    st.warning("No hay calibres seleccionados.")
+    st.stop()
 
-<form id="form">
+# Ordenar mayor a menor
+tabla = sorted(tabla, key=lambda x: x["calibre"], reverse=True)
 
-<label>Nombre del Operador</label>
-<input type="text" id="operador" placeholder="Ingrese nombre del operador" required>
+# ===============================
+# CÁLCULO DE RANGOS EN CASCADA
+# ===============================
 
-<label>Exportadora</label>
-<select id="exportadora" required>
-  <option value="">Seleccione exportadora</option>
-  <option value="Fruclem">Fruclem</option>
-  <option value="JHB">JHB</option>
-  <option value="Talamaya">Talamaya</option>
-</select>
+limite_superior = None
+resumen = []
 
-<label>Categoría</label>
-<select id="categoria" required>
-  <option value="">Seleccione categoría</option>
-  <option value="Premium">Premium</option>
-  <option value="Extra">Extra</option>
-  <option value="Fancy Choice">Fancy Choice</option>
-  <option value="Granel">Granel</option>
-</select>
+for i, fila in enumerate(tabla):
 
-<label>Salida</label>
-<select id="salida" required>
-  <option value="">Seleccione salida</option>
-  <!-- Generado dinámicamente -->
-</select>
+    calibre = fila["calibre"]
+    peso = fila["peso"]
+    grupo = fila["grupo"]
 
-<label>Calibre</label>
-<input type="text" id="calibre" placeholder="Ej: 2J, 3J, XL..." required>
+    gramos_objetivo = peso * 1000
+    peso_unitario = gramos_objetivo / calibre
 
-<label>Peso (kg)</label>
-<input type="number" id="peso" step="0.01" placeholder="Ej: 12.5" required>
+    if i == 0:
+        limite_superior = round(peso_unitario * 1.05, 0)
 
-<button type="submit">Guardar Registro</button>
+    limite_inferior = round(peso_unitario, 0)
 
-</form>
-</div>
+    col1, col2, col3, col4, col5 = st.columns([1,1,1,1,1])
 
-<div class="footer">
-Sistema desarrollado para control interno de producción
-</div>
+    with col1:
+        st.markdown(f"### {calibre}")
 
-</div>
+    with col2:
+        st.write(f"{peso:.1f} kg")
 
-<script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyeI6iwqoQ5JOacFq7CfHzswQRz8YpVxXKprN9XVCCbPkvsDh9GdvYUhusYGkh4kAOb/exec";
+    with col3:
+        desde = st.number_input(
+            "Desde",
+            value=float(limite_inferior),
+            step=1.0,
+            key=f"desde_{calibre}_{grupo}"
+        )
 
-const form = document.getElementById("form");
-const salidaSelect = document.getElementById("salida");
+    with col4:
+        st.write(f"Hasta: {int(limite_superior)}")
 
-/* Generar salidas del 1 al 41 automáticamente */
-for(let i = 1; i <= 41; i++){
-  let option = document.createElement("option");
-  option.value = i;
-  option.text = "Salida " + i;
-  salidaSelect.appendChild(option);
-}
+    with col5:
+        peso_real = (desde * calibre) / 1000
+        st.metric("Peso real", f"{peso_real:.1f} kg")
 
-form.addEventListener("submit", function(e){
-  e.preventDefault();
+    resumen.append({
+        "Calibre": calibre,
+        "Grupo": grupo,
+        "Peso Objetivo": peso,
+        "Desde": int(desde),
+        "Hasta": int(limite_superior),
+        "Peso Real (kg)": round(peso_real,1)
+    })
 
-  const data = {
-    operador: document.getElementById("operador").value,
-    exportadora: document.getElementById("exportadora").value,
-    categoria: document.getElementById("categoria").value,
-    salida: document.getElementById("salida").value,
-    calibre: document.getElementById("calibre").value,
-    peso: document.getElementById("peso").value
-  };
+    limite_superior = desde  # cascada real dinámica
 
-  fetch(SCRIPT_URL,{
-    method:"POST",
-    body:JSON.stringify(data)
-  })
-  .then(res=>res.json())
-  .then(response=>{
-    if(response.status==="success"){
-      alert("Registro guardado correctamente");
-      form.reset();
-    }else{
-      alert("Error: "+response.messag
+st.markdown("### 📋 Tabla Final Unificada")
+st.dataframe(resumen, use_container_width=True)
