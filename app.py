@@ -70,11 +70,17 @@ def calcular_grupo(calibres, peso, grupo):
 
         promedio_teorico = (peso * 1000) / calibre
 
-        # Amplitud base de 24 gramos (ajustable si quieres)
-        min_inicial = round(promedio_teorico - 12)
-        max_inicial = round(promedio_teorico + 12)
-
         key_min = f"{grupo}_{calibre}_min"
+
+        if i == 0:
+            # Primer calibre → rango centrado normal
+            min_inicial = round(promedio_teorico - 12)
+            maximo = round(promedio_teorico + 12)
+
+        else:
+            # Cascada correcta
+            maximo = limite_superior
+            min_inicial = round((2 * promedio_teorico) - maximo)
 
         if key_min not in st.session_state:
             st.session_state[key_min] = min_inicial
@@ -84,11 +90,6 @@ def calcular_grupo(calibres, peso, grupo):
             step=1.0,
             key=key_min
         )
-
-        if i == 0:
-            maximo = max_inicial
-        else:
-            maximo = limite_superior
 
         promedio_real = (minimo + maximo) / 2
         peso_real = (promedio_real * calibre) / 1000
@@ -116,16 +117,7 @@ def calcular_grupo(calibres, peso, grupo):
             "Peso Real (kg)": round(peso_real,1)
         })
 
+        # El mínimo actual pasa a ser el máximo del siguiente
         limite_superior = minimo
 
     return resultado
-
-
-tabla_final = []
-
-tabla_final += calcular_grupo(calibres_A, peso_A, "A")
-tabla_final += calcular_grupo(calibres_B, peso_B, "B")
-
-if tabla_final:
-    st.markdown("### 📋 Tabla Final")
-    st.dataframe(tabla_final, use_container_width=True)
