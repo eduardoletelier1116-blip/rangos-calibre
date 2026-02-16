@@ -1,101 +1,103 @@
 import streamlit as st
 
-st.set_page_config(page_title="Calculadora de Rangos por Calibre", layout="wide")
+st.set_page_config(page_title="Calculadora Cascada Profesional", layout="wide")
 
-st.title("🍎 Calculadora de Rangos en Cascada")
+st.title("🍎 Calculadora Cascada por Grupo")
 
-# -----------------------------
-# CONFIGURACIÓN GENERAL
-# -----------------------------
+# -------------------------------------------------
+# PESOS OBJETIVO
+# -------------------------------------------------
 
-peso_objetivo = st.number_input(
-    "Peso objetivo caja (kg)",
-    value=19.2,
-    step=0.1,
-    format="%.1f"
-)
+col_p1, col_p2 = st.columns(2)
+
+with col_p1:
+    peso_A = st.number_input("Peso objetivo Grupo A (kg)", 18.0, 22.0, 19.2, 0.1, format="%.1f")
+
+with col_p2:
+    peso_B = st.number_input("Peso objetivo Grupo B (kg)", 18.0, 22.0, 19.0, 0.1, format="%.1f")
 
 st.divider()
 
-# Lista completa de calibres disponibles
+# -------------------------------------------------
+# CALIBRES
+# -------------------------------------------------
+
 calibres_disponibles = [216,198,175,163,150,138,125,113,100,88,80,72]
 
-col_sel1, col_sel2 = st.columns(2)
+col_s1, col_s2 = st.columns(2)
 
-with col_sel1:
-    grupoA = st.multiselect(
-        "Seleccionar calibres Grupo A",
-        calibres_disponibles,
-        default=[125,113,100]
+with col_s1:
+    grupoA = sorted(
+        st.multiselect("Calibres Grupo A", calibres_disponibles, default=[125,113,100]),
+        reverse=True
     )
 
-with col_sel2:
-    grupoB = st.multiselect(
-        "Seleccionar calibres Grupo B",
-        calibres_disponibles,
-        default=[88,80]
+with col_s2:
+    grupoB = sorted(
+        st.multiselect("Calibres Grupo B", calibres_disponibles, default=[88,80]),
+        reverse=True
     )
-
-recalcular = st.button("🔄 Recalcular")
 
 st.divider()
 
-# -----------------------------
-# FUNCIÓN DE CÁLCULO CORRECTA
-# -----------------------------
+# -------------------------------------------------
+# FUNCIÓN CASCADA REAL
+# -------------------------------------------------
 
-def calcular_rangos(calibre, peso_objetivo):
-    """
-    Calcula rango mínimo y máximo en cascada.
-    El promedio del rango * calibre = peso objetivo.
-    """
+def calcular_cascada(grupo, peso_objetivo, nombre_grupo):
 
-    # Promedio exacto necesario por fruta
-    peso_promedio = (peso_objetivo * 1000) / calibre
+    if not grupo:
+        return
 
-    # Amplitud cascada (6% del promedio)
-    amplitud = peso_promedio * 0.06
+    st.subheader(f"Grupo {nombre_grupo}")
 
-    minimo = peso_promedio - amplitud
-    maximo = peso_promedio + amplitud
+    # mínimo editable del primer calibre
+    min_base = st.number_input(
+        f"Mínimo inicial Grupo {nombre_grupo} (g)",
+        value=int((peso_objetivo*1000)/grupo[0] * 0.95),
+        step=1,
+        key=f"min_base_{nombre_grupo}"
+    )
 
-    peso_real = (peso_promedio * calibre) / 1000
+    rangos = {}
+    minimo_actual = min_base
 
-    return round(minimo), round(maximo), round(peso_real, 1)
+    for i, calibre in enumerate(grupo):
+
+        promedio_objetivo = (peso_objetivo * 1000) / calibre
+
+        # calcular max buscando que promedio se acerque
+        maximo = (promedio_objetivo * 2) - minimo_actual
+
+        rangos[calibre] = (round(minimo_actual), round(maximo))
+
+        minimo_actual = maximo  # cascada
+
+    # Mostrar resultados
+    for calibre in grupo:
+
+        min_g, max_g = rangos[calibre]
+        promedio = (min_g + max_g) / 2
+        peso_real = (promedio * calibre) / 1000
+
+        st.markdown(f"### {nombre_grupo} - {calibre}")
+        c1, c2, c3 = st.columns(3)
+
+        c1.metric("Mín (g)", f"{min_g}")
+        c2.metric("Máx (g)", f"{max_g}")
+        c3.metric("Peso Real", f"{round(peso_real,1)} kg")
+
+        st.divider()
 
 
-# -----------------------------
-# MOSTRAR RESULTADOS
-# -----------------------------
+# -------------------------------------------------
+# EJECUCIÓN
+# -------------------------------------------------
 
 colA, colB = st.columns(2)
 
 with colA:
-    st.subheader("Grupo A")
-
-    for calibre in sorted(grupoA, reverse=True):
-        min_g, max_g, peso_real = calcular_rangos(calibre, peso_objetivo)
-
-        st.markdown(f"### A - {calibre}")
-        c1, c2, c3 = st.columns(3)
-
-        c1.metric("Mín (g)", f"{min_g}")
-        c2.metric("Máx (g)", f"{max_g}")
-        c3.metric("Peso Real", f"{peso_real} kg")
-
-        st.divider()
+    calcular_cascada(grupoA, peso_A, "A")
 
 with colB:
-    st.subheader("Grupo B")
-
-    for calibre in sorted(grupoB, reverse=True):
-        min_g, max_g, peso_real = calcular_rangos(calibre, peso_objetivo)
-
-        st.markdown(f"### B - {calibre}")
-        c1, c2, c3 = st.columns(3)
-
-        c1.metric("Mín (g)", f"{min_g}")
-        c2.metric("Máx (g)", f"{max_g}")
-        c3.metric("Peso Real", f"{peso_real} kg")
-
-        st.divider()
+    calcular_cascada(grupoB, peso_B, "B")
