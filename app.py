@@ -2,7 +2,7 @@ import streamlit as st
 
 st.set_page_config(page_title="Calculadora Cascada Profesional", layout="wide")
 
-st.title("🍎 Calculadora Cascada por Grupo")
+st.title("🍎 Calculadora Cascada Editable por Grupo")
 
 # -------------------------------------------------
 # PESOS OBJETIVO
@@ -41,53 +41,53 @@ with col_s2:
 st.divider()
 
 # -------------------------------------------------
-# FUNCIÓN CASCADA REAL
+# FUNCIÓN CASCADA EDITABLE REAL
 # -------------------------------------------------
 
-def calcular_cascada(grupo, peso_objetivo, nombre_grupo):
+def calcular_cascada_editable(grupo, peso_objetivo, nombre):
 
     if not grupo:
         return
 
-    st.subheader(f"Grupo {nombre_grupo}")
+    st.subheader(f"Grupo {nombre}")
 
-    # mínimo editable del primer calibre
-    min_base = st.number_input(
-        f"Mínimo inicial Grupo {nombre_grupo} (g)",
-        value=int((peso_objetivo*1000)/grupo[0] * 0.95),
-        step=1,
-        key=f"min_base_{nombre_grupo}"
-    )
-
-    rangos = {}
-    minimo_actual = min_base
+    limite_superior = None
 
     for i, calibre in enumerate(grupo):
 
-        promedio_objetivo = (peso_objetivo * 1000) / calibre
+        promedio_obj = (peso_objetivo * 1000) / calibre
 
-        # calcular max buscando que promedio se acerque
-        maximo = (promedio_objetivo * 2) - minimo_actual
+        key_min = f"{nombre}_{calibre}_min"
 
-        rangos[calibre] = (round(minimo_actual), round(maximo))
+        # Valor inicial centrado
+        if key_min not in st.session_state:
+            st.session_state[key_min] = round(promedio_obj * 0.95)
 
-        minimo_actual = maximo  # cascada
+        minimo = st.number_input(
+            f"{nombre} - {calibre} Mín (g)",
+            step=1,
+            key=key_min
+        )
 
-    # Mostrar resultados
-    for calibre in grupo:
+        # CASCADA REAL
+        if i == 0:
+            maximo = round((promedio_obj * 2) - minimo)
+        else:
+            maximo = limite_superior
 
-        min_g, max_g = rangos[calibre]
-        promedio = (min_g + max_g) / 2
-        peso_real = (promedio * calibre) / 1000
+        promedio_real = (minimo + maximo) / 2
+        peso_real = (promedio_real * calibre) / 1000
 
-        st.markdown(f"### {nombre_grupo} - {calibre}")
-        c1, c2, c3 = st.columns(3)
+        col1, col2, col3 = st.columns(3)
 
-        c1.metric("Mín (g)", f"{min_g}")
-        c2.metric("Máx (g)", f"{max_g}")
-        c3.metric("Peso Real", f"{round(peso_real,1)} kg")
+        col1.metric("Mín (g)", f"{int(minimo)}")
+        col2.metric("Máx (g)", f"{int(maximo)}")
+        col3.metric("Peso Real", f"{peso_real:.1f} kg")
 
         st.divider()
+
+        # El mínimo actual pasa a ser el máximo del siguiente
+        limite_superior = minimo
 
 
 # -------------------------------------------------
@@ -97,7 +97,7 @@ def calcular_cascada(grupo, peso_objetivo, nombre_grupo):
 colA, colB = st.columns(2)
 
 with colA:
-    calcular_cascada(grupoA, peso_A, "A")
+    calcular_cascada_editable(grupoA, peso_A, "A")
 
 with colB:
-    calcular_cascada(grupoB, peso_B, "B")
+    calcular_cascada_editable(grupoB, peso_B, "B")
