@@ -11,20 +11,10 @@ st.title("🍎 Calculadora Cascada Editable por Grupo")
 col_p1, col_p2 = st.columns(2)
 
 with col_p1:
-    peso_A = st.number_input(
-        "Peso objetivo Grupo A (kg)",
-        18.0, 22.0, 19.2, 0.1,
-        format="%.1f",
-        key="pesoA"
-    )
+    peso_A = st.number_input("Peso objetivo Grupo A (kg)", 18.0, 22.0, 19.2, 0.1, format="%.1f")
 
 with col_p2:
-    peso_B = st.number_input(
-        "Peso objetivo Grupo B (kg)",
-        18.0, 22.0, 19.0, 0.1,
-        format="%.1f",
-        key="pesoB"
-    )
+    peso_B = st.number_input("Peso objetivo Grupo B (kg)", 18.0, 22.0, 19.0, 0.1, format="%.1f")
 
 st.divider()
 
@@ -38,23 +28,13 @@ col_s1, col_s2 = st.columns(2)
 
 with col_s1:
     grupoA = sorted(
-        st.multiselect(
-            "Calibres Grupo A",
-            calibres_disponibles,
-            default=[125,113,100],
-            key="grupoA"
-        ),
+        st.multiselect("Calibres Grupo A", calibres_disponibles, default=[125,113,100]),
         reverse=True
     )
 
 with col_s2:
     grupoB = sorted(
-        st.multiselect(
-            "Calibres Grupo B",
-            calibres_disponibles,
-            default=[88,80],
-            key="grupoB"
-        ),
+        st.multiselect("Calibres Grupo B", calibres_disponibles, default=[88,80]),
         reverse=True
     )
 
@@ -63,7 +43,7 @@ reset = st.button("🔄 Recalcular desde cero")
 st.divider()
 
 # -------------------------------------------------
-# FUNCIÓN CASCADA ESTABLE
+# FUNCIÓN CASCADA CORRECTA
 # -------------------------------------------------
 
 def calcular_cascada(grupo, peso_objetivo, nombre):
@@ -80,8 +60,8 @@ def calcular_cascada(grupo, peso_objetivo, nombre):
         promedio_obj = (peso_objetivo * 1000) / calibre
         key_min = f"{nombre}_{calibre}_min"
 
+        # REINICIO CONTROLADO
         if reset or key_min not in st.session_state:
-
             if i == 0:
                 minimo_inicial = round(promedio_obj - 10)
             else:
@@ -95,10 +75,15 @@ def calcular_cascada(grupo, peso_objetivo, nombre):
             key=key_min
         )
 
+        # CASCADA
         if i == 0:
             maximo = round((2 * promedio_obj) - minimo)
         else:
             maximo = limite_superior
+
+        # ASEGURAR ORDEN CORRECTO
+        if minimo > maximo:
+            minimo, maximo = maximo, minimo
 
         promedio_real = (minimo + maximo) / 2
         peso_real = (promedio_real * calibre) / 1000
@@ -111,6 +96,7 @@ def calcular_cascada(grupo, peso_objetivo, nombre):
 
         st.divider()
 
+        # El mínimo real pasa como máximo del siguiente
         limite_superior = minimo
 
 
