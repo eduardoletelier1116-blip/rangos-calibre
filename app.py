@@ -72,8 +72,8 @@ if not tabla:
 # Ordenar mayor a menor
 tabla = sorted(tabla, key=lambda x: x["calibre"], reverse=True)
 
-# ===============================
-# CÁLCULO DE RANGOS EN CASCADA
+# # ===============================
+# CÁLCULO DE RANGOS EXACTOS
 # ===============================
 
 limite_superior = None
@@ -88,10 +88,15 @@ for i, fila in enumerate(tabla):
     gramos_objetivo = peso * 1000
     peso_unitario = gramos_objetivo / calibre
 
-    if i == 0:
-        limite_superior = round(peso_unitario * 1.05, 0)
-
     limite_inferior = round(peso_unitario, 0)
+
+    if i == 0:
+        limite_superior = limite_inferior
+
+    key_name = f"desde_{calibre}_{grupo}"
+
+    if key_name not in st.session_state:
+        st.session_state[key_name] = float(limite_inferior)
 
     col1, col2, col3, col4, col5 = st.columns([1,1,1,1,1])
 
@@ -104,9 +109,8 @@ for i, fila in enumerate(tabla):
     with col3:
         desde = st.number_input(
             "Desde",
-            value=float(limite_inferior),
             step=1.0,
-            key=f"desde_{calibre}_{grupo}"
+            key=key_name
         )
 
     with col4:
@@ -125,7 +129,7 @@ for i, fila in enumerate(tabla):
         "Peso Real (kg)": round(peso_real,1)
     })
 
-    limite_superior = desde  # cascada real dinámica
-
+    limite_superior = desde  # cascada real
+    
 st.markdown("### 📋 Tabla Final Unificada")
 st.dataframe(resumen, use_container_width=True)
