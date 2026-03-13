@@ -117,13 +117,21 @@ if todos_calibres:
         obj_especifico = mapa_pesos[cal]
         diff = peso_r - obj_especifico
         
+        # --- CORRECCIÓN DE COLOR PARA EL 0.00 ---
+        # Si la diferencia es casi nula, forzamos a 0 y color verde
+        if abs(diff) < 0.001:
+            diff_display = 0.00
+            color_delta = "inverse" # "inverse" en tema claro/oscuro suele ser verde para deltas
+        else:
+            diff_display = diff
+            color_delta = "normal"
+
         with res_cols[i]:
-            # Lógica de color: "normal" para que el 0 no sea rojo.
             st.metric(
                 label=f"Cal {cal}", 
                 value=f"{peso_r:.2f}", 
-                delta=f"{diff:.2f}",
-                delta_color="normal" 
+                delta=f"{diff_display:.2f}",
+                delta_color=color_delta
             )
             menor = min(punto_a, punto_b)
             mayor = max(punto_a, punto_b)
