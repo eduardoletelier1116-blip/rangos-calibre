@@ -1,93 +1,87 @@
 import streamlit as st
 
-st.set_page_config(page_title="Calculadora Pro - Cascada Unificada", layout="wide")
+st.set_page_config(page_title="Calculadora Cascada Unificada", layout="wide")
 
 st.title("🍎 Calculadora de Procesos Unificada")
-st.markdown("Ajusta los calibres en una sola línea, con la posibilidad de asignar pesos objetivo distintos.")
+st.markdown("Configura los calibres por peso objetivo y ajusta la cascada en una sola línea.")
 
-# --- CONFIGURACIÓN GLOBAL ---
-col_glob1, col_glob2 = st.columns([1, 2])
+# --- ENTRADAS DE CONFIGURACIÓN ---
+col_a, col_b = st.columns(2)
 
-with col_glob1:
-    peso_gen = st.number_input("Peso Objetivo General (kg)", 15.0, 25.0, 19.2, 0.1)
+with col_a:
+    st.subheader("Configuración 1")
+    peso_1 = st.number_input("Peso Objetivo 1 (kg)", 15.0, 25.0, 19.2, 0.1)
+    calibres_1 = st.multiselect("Calibres para Peso 1", [72, 80, 88, 100, 113, 125, 138, 150, 163, 175, 198, 216], default=[100, 113, 125])
 
-with col_glob2:
-    calibres_sel = st.multiselect(
-        "Selecciona Calibres", 
-        [72, 80, 88, 100, 113, 125, 138, 150, 163, 175, 198, 216], 
-        default=[88, 100, 113, 125, 150]
-    )
-    calibres_sel.sort()
+with col_b:
+    st.subheader("Configuración 2")
+    peso_2 = st.number_input("Peso Objetivo 2 (kg)", 15.0, 25.0, 20.2, 0.1)
+    calibres_2 = st.multiselect("Calibres para Peso 2", [72, 80, 88, 100, 113, 125, 138, 150, 163, 175, 198, 216], default=[138, 150])
 
-# --- SECCIÓN DE EXCEPCIONES ---
-with st.expander("⚖️ Asignar Peso Específico a Calibres (Opcional)"):
-    st.write("Si un calibre debe pesar distinto al general (ej. el 150), cámbialo aquí:")
-    pesos_especificos = {}
-    cols_exc = st.columns(len(calibres_sel))
-    for i, cal in enumerate(calibres_sel):
-        with cols_exc[i]:
-            # Por defecto es el peso general, pero el usuario puede cambiarlo
-            p_esp = st.number_input(f"Peso Cal {cal}", 15.0, 25.0, peso_gen, 0.1, key=f"exc_{cal}")
-            pesos_especificos[cal] = p_esp
+# --- PROCESAMIENTO UNIFICADO ---
+# Creamos un diccionario para saber qué peso le toca a cada calibre
+mapa_pesos = {}
+for c in calibres_1: mapa_pesos[c] = peso_1
+for c in calibres_2: mapa_pesos[c] = peso_2 # Si un calibre está en ambos, manda el peso 2
 
-# --- LÓGICA DE CÁLCULO AUTOMÁTICO ---
-if calibres_sel:
-    # 1. Gramajes ideales basados en su peso específico asignado
-    gramajes_ideales = [ (pesos_especificos[c] * 1000) / c for c in calibres_sel ]
+# Lista total de calibres seleccionados (únicos y ordenados de mayor a menor tamaño)
+todos_calibres = sorted(list(mapa_pesos.keys()))
+
+if todos_calibres:
+    # 1. Calcular gramajes medios ideales según el peso asignado a cada uno
+    gramajes_ideales = [ (mapa_pesos[c] * 1000) / c for c in todos_calibres ]
     
-    # 2. Puntos de corte automáticos (Cascada)
-    puntos = [int(gramajes_ideales[0] + (gramajes_ideales[0] * 0.05))] # Máx Inicial
+    # 2. Generar puntos de corte (Cascada)
+    puntos_auto = [int(gramajes_ideales[0] + 15)] # Margen superior
     for i in range(len(gramajes_ideales) - 1):
         union = (gramajes_ideales[i] + gramajes_ideales[i+1]) / 2
-        puntos.append(int(union))
-    puntos.append(int(gramajes_ideales[-1] - (gramajes_ideales[-1] * 0.05))) # Mín Final
+        puntos_auto.append(int(union))
+    puntos_auto.append(int(gramajes_ideales[-1] - 15)) # Margen inferior
 
     st.divider()
-    st.subheader("⚙️ Ajuste Fino de Cortes")
+    st.subheader("⚙️ Ajuste Fino de la Línea")
     
-    # --- INTERFAZ DE AJUSTE (Puntos de Unión) ---
+    # --- INTERFAZ DE AJUSTE (Una sola fila de inputs) ---
     puntos_finales = []
-    cols_ajuste = st.columns(len(puntos))
-    for i, p_auto in enumerate(puntos):
+    cols_ajuste = st.columns(len(puntos_auto))
+    for i, p_val in enumerate(puntos_auto):
         with cols_ajuste[i]:
-            if i == 0: label = "Máx Inicial"
-            elif i == len(puntos)-1: label = "Mín Final"
-            else: label = f"Corte {calibres_sel[i-1]}/{calibres_sel[i]}"
+            if i == 0: label = "Máx"
+            elif i == len(puntos_auto)-1: label = "Mín"
+            else: label = f"Corte {todos_calibres[i-1]}/{todos_calibres[i]}"
             
-            # El valor se resetea si cambia el peso objetivo específico de ese calibre
-            # Usamos una clave que combine los pesos de los calibres involucrados
-            p_relacionado = pesos_especificos[calibres_sel[i if i < len(calibres_sel) else i-1]]
-            v = st.number_input(label, value=p_auto, step=1, key=f"p_{i}_{p_relacionado}")
+            # El key incluye el peso para resetear si cambias el objetivo
+            v = st.number_input(label, value=p_val, step=1, key=f"corte_{i}_{mapa_pesos[todos_calibres[min(i, len(todos_calibres)-1)]]}")
             puntos_finales.append(v)
 
     st.divider()
 
-    # --- RESULTADOS FINALES (Toda la línea junta) ---
-    st.subheader("📦 Pesos Finales Calculados")
-    res_cols = st.columns(len(calibres_sel))
+    # --- RESULTADOS FINALES (Una sola fila de tarjetas) ---
+    st.subheader("📦 Pesos Reales por Caja")
+    res_cols = st.columns(len(todos_calibres))
 
-    for i, cal in enumerate(calibres_sel):
+    for i, cal in enumerate(todos_calibres):
         g_alto = puntos_finales[i]
         g_bajo = puntos_finales[i+1]
         promedio = (g_alto + g_bajo) / 2
-        peso_final = (promedio * cal) / 1000
-        obj_cal = pesos_especificos[cal]
+        peso_calc = (promedio * cal) / 1000
+        obj_especifico = mapa_pesos[cal]
         
         with res_cols[i]:
-            diff = peso_final - obj_cal
+            diff = peso_calc - obj_especifico
             color = "normal" if abs(diff) < 0.1 else "inverse"
             
             st.metric(
                 label=f"Calibre {cal}", 
-                value=f"{peso_final:.2f} kg", 
-                delta=f"{diff:.2f} vs {obj_cal}kg",
+                value=f"{peso_calc:.2f} kg", 
+                delta=f"{diff:.2f} vs {obj_especifico}kg",
                 delta_color=color
             )
             st.markdown(f"**{int(g_alto)}g - {int(g_bajo)}g**")
-            st.progress(min(max((peso_final - 15) / 10, 0.0), 1.0))
+            st.progress(min(max((peso_calc - 15) / 10, 0.0), 1.0))
 
 else:
-    st.info("Selecciona calibres para iniciar.")
+    st.info("Selecciona calibres en cualquiera de las dos configuraciones para empezar.")
 
 st.divider()
-st.caption("Esta vista mantiene la cascada técnica: el mínimo de un calibre es el máximo del siguiente.")
+st.caption("Fórmula: ( (Punto Alto + Punto Bajo) / 2 ) * Calibre / 1000. La cascada se mantiene unificada en toda la línea.")
