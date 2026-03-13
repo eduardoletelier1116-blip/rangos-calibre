@@ -1,12 +1,27 @@
 import streamlit as st
 
-st.set_page_config(page_title="Calculadora de Precisión Pro", layout="wide")
+st.set_page_config(page_title="Calculadora Packing Pro", layout="wide")
 
-# Estilo para mejorar la visualización y que no se corten los decimales
+# CSS Avanzado para forzar la visibilidad de botones y permitir scroll
 st.markdown("""
     <style>
-    [data-testid="stMetricValue"] { font-size: 1.5vw !important; }
-    .stNumberInput div div input { font-size: 1.2rem !important; font-weight: bold; }
+    /* Evita que los números de peso se corten */
+    [data-testid="stMetricValue"] { font-size: 1.4vw !important; }
+    
+    /* Fuerza un ancho mínimo a las columnas de ajuste para que el + y - no desaparezcan */
+    [data-testid="column"] {
+        min-width: 120px !important;
+    }
+    
+    /* Permite scroll horizontal si hay demasiados calibres */
+    .main .block-container {
+        overflow-x: auto;
+    }
+    
+    /* Estilo para los inputs numéricos */
+    .stNumberInput div div input {
+        font-weight: bold;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -50,15 +65,17 @@ if todos_calibres:
 
     st.divider()
     
-    # --- AJUSTE FINO CON BOTONES ---
+    # --- AJUSTE FINO (SCROLLABLE SI ES NECESARIO) ---
     st.subheader("⚙️ Ajuste Fino de Rangos (Gramos)")
+    
+    # Creamos un contenedor horizontal para los inputs
     puntos_f = []
     cols_adj = st.columns(len(cortes_sug))
     
     for i, v_sug in enumerate(cortes_sug):
         with cols_adj[i]:
             label = "Máx" if i == 0 else ("Mín" if i == len(cortes_sug)-1 else f"U {todos_calibres[i-1]}/{todos_calibres[i]}")
-            # El step=1 habilita automáticamente los botones + y - en Streamlit
+            # El step=1 y el CSS de min-width aseguran los botones
             val = st.number_input(label, value=v_sug, step=1, key=f"f_{i}_{len(todos_calibres)}")
             puntos_f.append(val)
 
@@ -75,9 +92,7 @@ if todos_calibres:
         diff = peso_r - obj
         
         with res_cols[i]:
-            # Muestra el peso con 2 decimales y el delta
             st.metric(label=f"Cal {cal}", value=f"{peso_r:.2f}", delta=f"{diff:.2f}")
-            # Rango visual
             st.caption(f"📏 {puntos_f[i]}g - {puntos_f[i+1]}g")
             st.progress(min(max((peso_r - 15) / 10, 0.0), 1.0))
 
