@@ -2,7 +2,7 @@ import streamlit as st
 
 st.set_page_config(page_title="Calculadora Packing Pro", layout="wide")
 
-# Estilo CSS optimizado
+# Estilo CSS para optimizar el espacio y visualización
 st.markdown("""
     <style>
     [data-testid="stMetricValue"] { font-size: 1.6vw !important; }
@@ -42,7 +42,6 @@ with st.container():
         with st.expander(f"Configuración Grupo {i+1}", expanded=True):
             col_p, col_c = st.columns([1, 4])
             with col_p:
-                # CAMBIO AQUÍ: step=0.1 para que suba y baje más rápido
                 p_obj = st.number_input(f"Peso Obj (kg)", 15.0, 25.0, 19.20, 0.1, key=f"peso_val_{i}")
             with col_c:
                 c_sel = st.multiselect(
@@ -77,7 +76,6 @@ if todos_calibres:
     for i in range(len(ideales) - 1):
         cortes_sugeridos.append(int((ideales[i] + ideales[i+1]) / 2))
     
-    # Precalibre automático para clavar el último peso
     ultimo_corte_previo = cortes_sugeridos[-1]
     gramo_necesario_ultimo = (mapa_pesos[todos_calibres[-1]] * 2000 / todos_calibres[-1]) - ultimo_corte_previo
     cortes_sugeridos.append(int(gramo_necesario_ultimo))
@@ -120,7 +118,13 @@ if todos_calibres:
         diff = peso_r - obj_especifico
         
         with res_cols[i]:
-            st.metric(label=f"Cal {cal}", value=f"{peso_r:.2f}", delta=f"{diff:.2f}")
+            # Ajustado delta_color="normal" para evitar el rojo innecesario
+            st.metric(
+                label=f"Cal {cal}", 
+                value=f"{peso_r:.2f}", 
+                delta=f"{diff:.2f} vs {obj_especifico:.1f}",
+                delta_color="normal"
+            )
             menor = min(punto_a, punto_b)
             mayor = max(punto_a, punto_b)
             st.caption(f"📏 {menor}g - {mayor}g")
