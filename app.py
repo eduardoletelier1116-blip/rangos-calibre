@@ -2,23 +2,12 @@ import streamlit as st
 
 st.set_page_config(page_title="Calculadora Packing Pro", layout="wide")
 
-# PARCHE DEFINITIVO: CSS para forzar el color verde en deltas de 0.00
+# Estilo CSS optimizado
 st.markdown("""
     <style>
     [data-testid="stMetricValue"] { font-size: 1.6vw !important; }
     .stNumberInput div div input { font-weight: bold; }
     label p { font-size: 1rem !important; font-weight: bold; }
-    
-    /* Si el delta contiene 0.00, forzamos color verde y quitamos flechas rojas */
-    div[data-testid="stMetricDelta"]:contains("0.00") {
-        color: #09ab3b !important;
-        background-color: rgba(9, 171, 59, 0.1) !important;
-        border-radius: 5px;
-        padding: 2px 5px;
-    }
-    div[data-testid="stMetricDelta"] svg {
-        display: none !important; /* Quita la flecha que confunde */
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -53,6 +42,7 @@ with st.container():
         with st.expander(f"Configuración Grupo {i+1}", expanded=True):
             col_p, col_c = st.columns([1, 4])
             with col_p:
+                # CAMBIO AQUÍ: step=0.1 para que suba y baje más rápido
                 p_obj = st.number_input(f"Peso Obj (kg)", 15.0, 25.0, 19.20, 0.1, key=f"peso_val_{i}")
             with col_c:
                 c_sel = st.multiselect(
@@ -87,6 +77,7 @@ if todos_calibres:
     for i in range(len(ideales) - 1):
         cortes_sugeridos.append(int((ideales[i] + ideales[i+1]) / 2))
     
+    # Precalibre automático para clavar el último peso
     ultimo_corte_previo = cortes_sugeridos[-1]
     gramo_necesario_ultimo = (mapa_pesos[todos_calibres[-1]] * 2000 / todos_calibres[-1]) - ultimo_corte_previo
     cortes_sugeridos.append(int(gramo_necesario_ultimo))
@@ -128,15 +119,8 @@ if todos_calibres:
         obj_especifico = mapa_pesos[cal]
         diff = peso_r - obj_especifico
         
-        # Forzamos que si es casi cero, se muestre como 0.00 positivo
-        diff_val = 0.00 if abs(diff) < 0.001 else diff
-
         with res_cols[i]:
-            st.metric(
-                label=f"Cal {cal}", 
-                value=f"{peso_r:.2f}", 
-                delta=f"{diff_val:.2f}"
-            )
+            st.metric(label=f"Cal {cal}", value=f"{peso_r:.2f}", delta=f"{diff:.2f}")
             menor = min(punto_a, punto_b)
             mayor = max(punto_a, punto_b)
             st.caption(f"📏 {menor}g - {mayor}g")
