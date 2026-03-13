@@ -1,116 +1,94 @@
 import streamlit as st
 
-st.set_page_config(page_title="Calculadora Cascada Profesional", layout="wide")
+st.set_page_config(page_title="Calculadora de Calibres Pro", layout="wide", page_icon="🍎")
 
-st.title("🍎 Calculadora Cascada Editable por Grupo")
+st.title("🍎 Calculadora de Pesos y Calibres Dinámica")
+st.markdown("""
+Ajusta los rangos de gramos para cada calibre. El **Peso Real** se calculará automáticamente 
+en base al promedio de los rangos que definas.
+""")
 
 # -------------------------------------------------
-# PESOS OBJETIVO
+# CONFIGURACIÓN INICIAL
 # -------------------------------------------------
+calibres_disponibles = [216, 198, 175, 163, 150, 138, 125, 113, 100, 88, 80, 72]
 
 col_p1, col_p2 = st.columns(2)
-
 with col_p1:
-    peso_A = st.number_input("Peso objetivo Grupo A (kg)", 18.0, 22.0, 19.2, 0.1)
+    peso_obj_A = st.number_input("Peso Objetivo Grupo A (kg)", 15.0, 25.0, 19.5, 0.1)
+    grupoA = sorted(st.multiselect("Calibres Grupo A", calibres_disponibles, default=[125, 113, 100]), reverse=True)
 
 with col_p2:
-    peso_B = st.number_input("Peso objetivo Grupo B (kg)", 18.0, 22.0, 19.0, 0.1)
+    peso_obj_B = st.number_input("Peso Objetivo Grupo B (kg)", 15.0, 25.0, 19.0, 0.1)
+    grupoB = sorted(st.multiselect("Calibres Grupo B", calibres_disponibles, default=[88, 80]), reverse=True)
 
 st.divider()
 
 # -------------------------------------------------
-# CALIBRES
+# FUNCIÓN DE CÁLCULO DINÁMICO
 # -------------------------------------------------
-
-calibres_disponibles = [216,198,175,163,150,138,125,113,100,88,80,72]
-
-col_s1, col_s2 = st.columns(2)
-
-with col_s1:
-    grupoA = sorted(
-        st.multiselect("Calibres Grupo A", calibres_disponibles, default=[125,113,100]),
-        reverse=True
-    )
-
-with col_s2:
-    grupoB = sorted(
-        st.multiselect("Calibres Grupo B", calibres_disponibles, default=[88,80]),
-        reverse=True
-    )
-
-st.divider()
-
-# -------------------------------------------------
-# CASCADA CORRECTA SIN PROPAGACIÓN DE ERROR
-# -------------------------------------------------
-
-def calcular_cascada(grupo, peso_objetivo, nombre):
-
+def render_grupo(grupo, peso_objetivo, nombre_grupo):
     if not grupo:
+        st.info(f"Selecciona calibres para el Grupo {nombre_grupo}")
         return
 
-    st.subheader(f"Grupo {nombre}")
+    st.subheader(f"📊 Detalle Grupo {nombre_grupo} (Objetivo: {peso_objetivo} kg)")
+    
+    for calibre in grupo:
+        with st.container():
+            # Cálculo inicial sugerido para los sliders (Margen de +/- 10% aprox)
+            promedio_ideal = (peso_objetivo * 1000) / calibre
+            margen_sugerido = promedio_ideal * 0.1
+            
+            val_min_init = int(promedio_ideal - margen_sugerido)
+            val_max_init = int(promedio_ideal + margen_sugerido)
 
-    minimos = []
+            col1, col2, col3 = st.columns([2, 3, 2])
 
-    for i, calibre in enumerate(grupo):
+            with col1:
+                st.markdown(f"### Calibre **{calibre}**")
+                # Sliders para ajustar rangos
+                rango = st.slider(
+                    f"Ajustar Rango (g) - Cal {calibre}",
+                    min_value=int(promedio_ideal * 0.5), # Límites lógicos del slider
+                    max_value=int(promedio_ideal * 1.5),
+                    value=(val_min_init, val_max_init),
+                    key=f"slider_{nombre_grupo}_{calibre}"
+                )
+            
+            # Cálculos basados en el slider
+            rango_min, rango_max = rango
+            promedio_real = (rango_min + rango_max) / 2
+            peso_real_calculado = (promedio_real * calibre) / 1000
 
-        promedio_obj = (peso_objetivo * 1000) / calibre
-        key_min = f"{nombre}_{calibre}_min"
+            with col2:
+                # Visualización de métricas
+                m1, m2 = st.columns(2)
+                m1.metric("Mínimo", f"{rango_min}g")
+                m2.metric("Máximo", f"{rango_max}g")
+                st.caption(f"Promedio actual: {promedio_real:.1f}g")
 
-        # Valor inicial independiente
-        if key_min not in st.session_state:
-            st.session_state[key_min] = round(promedio_obj - 10)
+            with col3:
+                # Color de alerta si el peso se desvía mucho del objetivo
+                diferencia = abs(peso_real_calculado - peso_objetivo)
+                color = "normal" if diferencia < 0.3 else "inverse"
+                
+                st.metric(
+                    "PESO FINAL", 
+                    f"{peso_real_calculado:.2f} kg", 
+                    delta=f"{peso_real_calculado - peso_objetivo:.2f} kg vs Obj",
+                    delta_color=color
+                )
 
-        minimo = st.number_input(
-            f"{nombre} - {calibre} Mín (g)",
-            step=1,
-            key=key_min
-        )
-
-        minimos.append(minimo)
-
-    # -------------------------------------------------
-    # Ahora reconstruimos la cascada completa correctamente
-    # -------------------------------------------------
-
-    limite_superior = None
-
-    for i, calibre in enumerate(grupo):
-
-        promedio_obj = (peso_objetivo * 1000) / calibre
-        minimo = minimos[i]
-
-        if i == 0:
-            maximo = (2 * promedio_obj) - minimo
-        else:
-            maximo = limite_superior
-
-        if minimo > maximo:
-            minimo, maximo = maximo, minimo
-
-        promedio_real = (minimo + maximo) / 2
-        peso_real = (promedio_real * calibre) / 1000
-
-        col1, col2, col3 = st.columns(3)
-
-        col1.metric("Mín (g)", f"{int(minimo)}")
-        col2.metric("Máx (g)", f"{int(maximo)}")
-        col3.metric("Peso Real", f"{peso_real:.1f} kg")
-
-        st.divider()
-
-        limite_superior = minimo
-
+            st.divider()
 
 # -------------------------------------------------
-# EJECUCIÓN
+# RENDERIZADO DE COLUMNAS
 # -------------------------------------------------
+cA, cB = st.columns(2)
 
-colA, colB = st.columns(2)
+with cA:
+    render_grupo(grupoA, peso_obj_A, "A")
 
-with colA:
-    calcular_cascada(grupoA, peso_A, "A")
-
-with colB:
-    calcular_cascada(grupoB, peso_B, "B")
+with cB:
+    render_grupo(grupoB, peso_obj_B, "B")
