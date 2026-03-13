@@ -2,26 +2,11 @@ import streamlit as st
 
 st.set_page_config(page_title="Calculadora Packing Pro", layout="wide")
 
-# CSS Avanzado para forzar la visibilidad de botones y permitir scroll
+# CSS para asegurar que los números de los pesos se vean bien y los inputs sean legibles
 st.markdown("""
     <style>
-    /* Evita que los números de peso se corten */
-    [data-testid="stMetricValue"] { font-size: 1.4vw !important; }
-    
-    /* Fuerza un ancho mínimo a las columnas de ajuste para que el + y - no desaparezcan */
-    [data-testid="column"] {
-        min-width: 120px !important;
-    }
-    
-    /* Permite scroll horizontal si hay demasiados calibres */
-    .main .block-container {
-        overflow-x: auto;
-    }
-    
-    /* Estilo para los inputs numéricos */
-    .stNumberInput div div input {
-        font-weight: bold;
-    }
+    [data-testid="stMetricValue"] { font-size: 1.8vw !important; }
+    .stNumberInput div div input { font-size: 1.1rem !important; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -65,23 +50,31 @@ if todos_calibres:
 
     st.divider()
     
-    # --- AJUSTE FINO (SCROLLABLE SI ES NECESARIO) ---
+    # --- AJUSTE FINO (ORGANIZADO EN FILAS DE 6) ---
     st.subheader("⚙️ Ajuste Fino de Rangos (Gramos)")
     
-    # Creamos un contenedor horizontal para los inputs
     puntos_f = []
-    cols_adj = st.columns(len(cortes_sug))
+    # Definimos cuántos controles queremos por fila para que no se achiquen los botones
+    cols_por_fila = 6
     
-    for i, v_sug in enumerate(cortes_sug):
-        with cols_adj[i]:
-            label = "Máx" if i == 0 else ("Mín" if i == len(cortes_sug)-1 else f"U {todos_calibres[i-1]}/{todos_calibres[i]}")
-            # El step=1 y el CSS de min-width aseguran los botones
-            val = st.number_input(label, value=v_sug, step=1, key=f"f_{i}_{len(todos_calibres)}")
-            puntos_f.append(val)
+    for i in range(0, len(cortes_sug), cols_por_fila):
+        # Creamos una fila de columnas para este bloque
+        bloque_cortes = cortes_sug[i : i + cols_por_fila]
+        cols = st.columns(cols_por_fila)
+        
+        for j, v_sug in enumerate(bloque_cortes):
+            idx_real = i + j
+            with cols[j]:
+                if idx_real == 0: label = "Máximo"
+                elif idx_real == len(cortes_sug)-1: label = "Mínimo"
+                else: label = f"U {todos_calibres[idx_real-1]}/{todos_calibres[idx_real]}"
+                
+                val = st.number_input(label, value=v_sug, step=1, key=f"f_{idx_real}_{len(todos_calibres)}")
+                puntos_f.append(val)
 
     st.divider()
 
-    # --- RESULTADOS ---
+    # --- RESULTADOS (SIEMPRE EN UNA FILA PARA COMPARAR) ---
     st.subheader("📦 Pesos Reales (2 Decimales)")
     res_cols = st.columns(len(todos_calibres))
 
