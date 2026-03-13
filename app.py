@@ -2,7 +2,7 @@ import streamlit as st
 
 st.set_page_config(page_title="Calculadora Packing Pro", layout="wide")
 
-# Estilo CSS para optimizar el espacio y visualización
+# Estilo CSS optimizado
 st.markdown("""
     <style>
     [data-testid="stMetricValue"] { font-size: 1.6vw !important; }
@@ -118,12 +118,12 @@ if todos_calibres:
         diff = peso_r - obj_especifico
         
         with res_cols[i]:
-            # Ajustado delta_color="normal" para evitar el rojo innecesario
+            # Lógica de color: "normal" para que el 0 no sea rojo.
             st.metric(
                 label=f"Cal {cal}", 
                 value=f"{peso_r:.2f}", 
-                delta=f"{diff:.2f} vs {obj_especifico:.1f}",
-                delta_color="normal"
+                delta=f"{diff:.2f}",
+                delta_color="normal" 
             )
             menor = min(punto_a, punto_b)
             mayor = max(punto_a, punto_b)
