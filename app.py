@@ -1,77 +1,71 @@
 import streamlit as st
 
-st.set_page_config(page_title="Calculadora de Procesos Pro", layout="wide")
+st.set_page_config(page_title="Calculadora Automática de Calibres", layout="wide")
 
-st.title("🍎 Control de Calibres y Pesos en Cascada")
+st.title("🍎 Calculadora de Procesos Automática")
+st.markdown("Los rangos se calculan **automáticamente** al ingresar calibres para dar el peso objetivo.")
 
-# --- ENTRADAS ---
+# --- ENTRADAS DE CONFIGURACIÓN ---
 col1, col2 = st.columns([1, 2])
 with col1:
-    peso_obj = st.number_input("Peso Objetivo de la Caja (kg)", 15.0, 25.0, 19.2, 0.1)
+    peso_obj = st.number_input("Peso Objetivo (kg)", 15.0, 25.0, 19.2, 0.1, key="peso_obj")
 
 with col2:
     calibres_sel = st.multiselect(
         "Selecciona Calibres", 
         [72, 80, 88, 100, 113, 125, 138, 150, 163, 175, 198, 216], 
-        default=[72, 80, 88, 100, 113, 125]
+        default=[72, 80, 88, 100],
+        key="calibres_sel"
     )
-    calibres_sel.sort() # Orden de mayor a menor tamaño (número menor a mayor)
+    calibres_sel.sort()
 
+# --- LÓGICA DE CÁLCULO AUTOMÁTICO ---
 if calibres_sel:
-    # --- LÓGICA DE CÁLCULO DE RANGOS TEÓRICOS ---
-    # Para que cada caja pese 'peso_obj', el fruto medio debe ser: (peso_obj * 1000 / calibre)
-    # Calculamos los "puntos de corte" entre calibres. 
-    # El punto de corte entre Calibre A y B es el promedio de sus frutos medios ideales.
-    
+    # Calculamos los puntos de corte ideales basados en el peso objetivo
+    # Gramaje medio ideal = (Peso_Obj * 1000) / Calibre
     gramajes_ideales = [(peso_obj * 1000) / c for c in calibres_sel]
     
-    cortes = []
-    # 1. Mínimo del primer calibre (Margen de -15g)
-    cortes.append(int(gramajes_ideales[0] - 15))
+    cortes_calculados = []
+    # 1. El primer mínimo (Margen de seguridad del 5%)
+    cortes_calculados.append(int(gramajes_ideales[0] + (gramajes_ideales[0] * 0.05)))
     
-    # 2. Puntos intermedios
+    # 2. Uniones (Promedio entre lo que necesita un calibre y el siguiente)
     for i in range(len(gramajes_ideales) - 1):
-        # La unión es el punto medio entre lo que necesita un calibre y lo que necesita el siguiente
-        punto_union = (gramajes_ideales[i] + gramajes_ideales[i+1]) / 2
-        cortes.append(int(punto_union))
+        union = (gramajes_ideales[i] + gramajes_ideales[i+1]) / 2
+        cortes_calculados.append(int(union))
     
-    # 3. Máximo del último calibre (Margen de +15g)
-    cortes.append(int(gramajes_ideales[-1] + 15))
+    # 3. El último máximo (Margen de seguridad del 5%)
+    cortes_calculados.append(int(gramajes_ideales[-1] - (gramajes_ideales[-1] * 0.05)))
 
+    # --- INTERFAZ DE AJUSTE MANUAL ---
     st.divider()
     st.subheader("⚙️ Ajuste Fino de Cortes (Gramos)")
     
-    # --- INTERFAZ DE AJUSTE ---
-    puntos_editados = []
-    # Usamos columnas para que no ocupen tanto espacio vertical
-    cols_ajuste = st.columns(len(cortes))
-    for i, valor_sugerido in enumerate(cortes):
+    puntos_finales = []
+    cols_ajuste = st.columns(len(cortes_calculados))
+    
+    for i, valor_auto in enumerate(cortes_calculados):
         with cols_ajuste[i]:
-            if i == 0: label = "Mín 1er Cal"
-            elif i == len(cortes)-1: label = "Máx Últ Cal"
+            if i == 0: label = f"Máx Inicial ({calibres_sel[0]})"
+            elif i == len(cortes_calculados)-1: label = f"Mín Final ({calibres_sel[-1]})"
             else: label = f"Corte {calibres_sel[i-1]}/{calibres_sel[i]}"
             
-            # Ajuste manual
-            v = st.number_input(label, value=valor_sugerido, step=1, key=f"c_{i}")
-            puntos_editados.append(v)
+            # El valor por defecto es el calculado automáticamente
+            v = st.number_input(label, value=valor_auto, step=1, key=f"c_input_{i}_{peso_obj}")
+            puntos_finales.append(v)
 
     st.divider()
 
-    # --- RESULTADOS ---
-    st.subheader("📦 Pesos Finales Calculados")
+    # --- RESULTADOS FINALES ---
+    st.subheader("📦 Pesos por Caja Resultantes")
     res_cols = st.columns(len(calibres_sel))
 
     for i, cal in enumerate(calibres_sel):
-        # Ahora el rango siempre va de menor a mayor
-        # r_min es el corte i, r_max es el corte i+1
-        # Pero como los calibres (72, 80...) van de mayor a menor peso,
-        # invertimos la lógica para que el gramaje se vea correctamente:
+        # El rango de un calibre i está entre el punto i y el punto i+1
+        g_alto = puntos_finales[i]
+        g_bajo = puntos_finales[i+1]
         
-        g_superior = puntos_editados[i]   # El calibre anterior es más pesado
-        g_inferior = puntos_editados[i+1] # El calibre siguiente es más liviano
-        
-        # El promedio de la caja es:
-        promedio_caja = (g_superior + g_inferior) / 2
+        promedio_caja = (g_alto + g_bajo) / 2
         peso_final = (promedio_caja * cal) / 1000
         
         with res_cols[i]:
@@ -84,9 +78,13 @@ if calibres_sel:
                 delta=f"{diff:.2f} kg vs Obj",
                 delta_color=color
             )
-            # Mostramos el rango de mayor a menor peso como se usa en packing
-            st.write(f"**{g_superior}g - {g_inferior}g**")
+            st.markdown(f"**Rango:** {int(g_alto)}g - {int(g_bajo)}g")
+            
+            # Barra de estado
             st.progress(min(max((peso_final - 15) / 10, 0.0), 1.0))
 
 else:
-    st.info("Selecciona los calibres para iniciar el cálculo.")
+    st.info("Agrega calibres para ver el cálculo automático.")
+
+st.divider()
+st.caption("Nota: Los calibres están ordenados de fruta grande (72) a fruta pequeña (216).")
