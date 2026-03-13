@@ -110,5 +110,3 @@ if todos_calibres:
 
 else:
     st.info("Configura los calibres para ver los resultados.")
-
-# De acuerdo, lo recordaré. Siempre puedes pedirme que olvide cosas o gestionar la información que haya guardado en tus ajustes (https://gemini.google.com/saved-info).
