@@ -42,7 +42,8 @@ with st.container():
         with st.expander(f"Configuración Grupo {i+1}", expanded=True):
             col_p, col_c = st.columns([1, 4])
             with col_p:
-                p_obj = st.number_input(f"Peso Obj (kg)", 15.0, 25.0, 19.20, 0.01, key=f"peso_val_{i}")
+                # CAMBIO AQUÍ: step=0.1 para que suba y baje más rápido
+                p_obj = st.number_input(f"Peso Obj (kg)", 15.0, 25.0, 19.20, 0.1, key=f"peso_val_{i}")
             with col_c:
                 c_sel = st.multiselect(
                     f"Seleccione Calibres", 
@@ -65,23 +66,18 @@ with col_b2:
                 del st.session_state[key]
         st.rerun()
 
-# --- 4. LÓGICA DE CÁLCULO MEJORADA ---
+# --- 4. LÓGICA DE CÁLCULO ---
 todos_calibres = sorted(list(mapa_pesos.keys()))
 
 if todos_calibres:
     ideales = [(mapa_pesos[c] * 1000) / c for c in todos_calibres]
     
-    # 1. Sobrecalibre (Un 5% más que el ideal del primer calibre)
     sobrecalibre_sug = int(ideales[0] * 1.05)
-    
-    # 2. Uniones intermedias
     cortes_sugeridos = [sobrecalibre_sug]
     for i in range(len(ideales) - 1):
         cortes_sugeridos.append(int((ideales[i] + ideales[i+1]) / 2))
     
-    # 3. Precalibre (Cálculo Inverso para clavar el objetivo del último calibre)
-    # Si (Corte_anterior + Precalibre) / 2 * Cal / 1000 = Objetivo
-    # Entonces: Precalibre = (Objetivo * 2000 / Cal) - Corte_anterior
+    # Precalibre automático para clavar el último peso
     ultimo_corte_previo = cortes_sugeridos[-1]
     gramo_necesario_ultimo = (mapa_pesos[todos_calibres[-1]] * 2000 / todos_calibres[-1]) - ultimo_corte_previo
     cortes_sugeridos.append(int(gramo_necesario_ultimo))
