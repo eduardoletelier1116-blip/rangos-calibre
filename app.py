@@ -2,12 +2,23 @@ import streamlit as st
 
 st.set_page_config(page_title="Calculadora Packing Pro", layout="wide")
 
-# Estilo CSS optimizado
+# PARCHE DEFINITIVO: CSS para forzar el color verde en deltas de 0.00
 st.markdown("""
     <style>
     [data-testid="stMetricValue"] { font-size: 1.6vw !important; }
     .stNumberInput div div input { font-weight: bold; }
     label p { font-size: 1rem !important; font-weight: bold; }
+    
+    /* Si el delta contiene 0.00, forzamos color verde y quitamos flechas rojas */
+    div[data-testid="stMetricDelta"]:contains("0.00") {
+        color: #09ab3b !important;
+        background-color: rgba(9, 171, 59, 0.1) !important;
+        border-radius: 5px;
+        padding: 2px 5px;
+    }
+    div[data-testid="stMetricDelta"] svg {
+        display: none !important; /* Quita la flecha que confunde */
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -117,21 +128,14 @@ if todos_calibres:
         obj_especifico = mapa_pesos[cal]
         diff = peso_r - obj_especifico
         
-        # --- CORRECCIÓN DE COLOR PARA EL 0.00 ---
-        # Si la diferencia es casi nula, forzamos a 0 y color verde
-        if abs(diff) < 0.001:
-            diff_display = 0.00
-            color_delta = "inverse" # "inverse" en tema claro/oscuro suele ser verde para deltas
-        else:
-            diff_display = diff
-            color_delta = "normal"
+        # Forzamos que si es casi cero, se muestre como 0.00 positivo
+        diff_val = 0.00 if abs(diff) < 0.001 else diff
 
         with res_cols[i]:
             st.metric(
                 label=f"Cal {cal}", 
                 value=f"{peso_r:.2f}", 
-                delta=f"{diff_display:.2f}",
-                delta_color=color_delta
+                delta=f"{diff_val:.2f}"
             )
             menor = min(punto_a, punto_b)
             mayor = max(punto_a, punto_b)
