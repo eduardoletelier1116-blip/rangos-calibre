@@ -1,32 +1,32 @@
 import streamlit as st
 
-st.set_page_config(page_title="Calculadora de Precisión", layout="wide")
+st.set_page_config(page_title="Calculadora de Precisión Pro", layout="wide")
 
-# Estilo CSS para evitar que los números se corten y limpiar la interfaz
+# Estilo para mejorar la visualización y que no se corten los decimales
 st.markdown("""
     <style>
-    [data-testid="stMetricValue"] { font-size: 1.6vw !important; }
-    .stProgress > div > div > div > div { background-color: #2e7d32; }
+    [data-testid="stMetricValue"] { font-size: 1.5vw !important; }
+    .stNumberInput div div input { font-size: 1.2rem !important; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🍎 Control de Calibres y Pesos")
 
-# --- INICIALIZACIÓN DE ESTADO ---
+# --- ESTADO DE LA APP ---
 if 'num_grupos' not in st.session_state:
     st.session_state.num_grupos = 1
 
-# --- SECCIÓN DE ENTRADAS ---
+# --- CONFIGURACIÓN DE GRUPOS ---
+mapa_pesos = {}
 with st.container():
     for i in range(st.session_state.num_grupos):
         col_p, col_c = st.columns([1, 4])
         with col_p:
-            p_obj = st.number_input(f"Peso Objetivo {i+1} (kg)", 15.0, 25.0, 19.20, 0.01, key=f"p_{i}")
+            p_obj = st.number_input(f"Peso Obj {i+1} (kg)", 15.0, 25.0, 19.20, 0.01, key=f"p_{i}")
         with col_c:
             c_sel = st.multiselect(f"Calibres Grupo {i+1}", [72, 80, 88, 100, 113, 125, 138, 150, 163, 175, 198, 216], key=f"s_{i}")
-        
-        if 'mapa_pesos' not in locals(): mapa_pesos = {}
-        for c in c_sel: mapa_pesos[c] = p_obj
+        for c in c_sel:
+            mapa_pesos[c] = p_obj
 
 col_b1, col_b2, _ = st.columns([1, 1, 4])
 with col_b1:
@@ -38,8 +38,8 @@ with col_b2:
         for key in list(st.session_state.keys()): del st.session_state[key]
         st.rerun()
 
-# --- CÁLCULOS ---
-todos_calibres = sorted(list(mapa_pesos.keys())) if 'mapa_pesos' in locals() else []
+# --- LÓGICA DE CÁLCULO ---
+todos_calibres = sorted(list(mapa_pesos.keys()))
 
 if todos_calibres:
     ideales = [(mapa_pesos[c] * 1000) / c for c in todos_calibres]
@@ -50,18 +50,21 @@ if todos_calibres:
 
     st.divider()
     
-    # --- AJUSTE FINO (ENTRADAS MANUALES) ---
+    # --- AJUSTE FINO CON BOTONES ---
+    st.subheader("⚙️ Ajuste Fino de Rangos (Gramos)")
     puntos_f = []
     cols_adj = st.columns(len(cortes_sug))
+    
     for i, v_sug in enumerate(cortes_sug):
         with cols_adj[i]:
-            label = "Máx" if i == 0 else ("Mín" if i == len(cortes_sug)-1 else f"U{todos_calibres[i-1]}/{todos_calibres[i]}")
+            label = "Máx" if i == 0 else ("Mín" if i == len(cortes_sug)-1 else f"U {todos_calibres[i-1]}/{todos_calibres[i]}")
+            # El step=1 habilita automáticamente los botones + y - en Streamlit
             val = st.number_input(label, value=v_sug, step=1, key=f"f_{i}_{len(todos_calibres)}")
             puntos_f.append(val)
 
     st.divider()
 
-    # --- RESULTADOS (2 DECIMALES SIN CORTES) ---
+    # --- RESULTADOS ---
     st.subheader("📦 Pesos Reales (2 Decimales)")
     res_cols = st.columns(len(todos_calibres))
 
@@ -72,10 +75,11 @@ if todos_calibres:
         diff = peso_r - obj
         
         with res_cols[i]:
-            # El valor se formatea a 2 decimales estrictos
+            # Muestra el peso con 2 decimales y el delta
             st.metric(label=f"Cal {cal}", value=f"{peso_r:.2f}", delta=f"{diff:.2f}")
-            st.caption(f"**{puntos_f[i]}g-{puntos_f[i+1]}g**")
+            # Rango visual
+            st.caption(f"📏 {puntos_f[i]}g - {puntos_f[i+1]}g")
             st.progress(min(max((peso_r - 15) / 10, 0.0), 1.0))
 
 else:
-    st.info("Selecciona calibres para comenzar.")
+    st.info("Configura los calibres para ver los resultados.")
